@@ -525,6 +525,11 @@
                 <button class="subject-btn re" onclick="selectSubject('re')">✝️ RE</button>
                 <button class="subject-btn sci" onclick="selectSubject('science')">🔬 Science</button>
             </div>
+            <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+                <label for="apiKeyInput" style="margin: 0; font-weight: 600; color: var(--dark);">Claude API Key (optional):</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-..." style="flex: 1; max-width: 300px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                <small style="color: #6b7280; flex: 1;">Get free key at <a href="https://console.anthropic.com" target="_blank" style="color: var(--primary); text-decoration: none;">console.anthropic.com</a> to auto-generate study materials</small>
+            </div>
         </header>
 
         <main>
@@ -693,6 +698,23 @@
         </div>
     </div>
 
+    <!-- Loading Modal -->
+    <div class="modal" id="loadingModal">
+        <div class="modal-content" style="text-align: center; max-width: 400px;">
+            <div style="font-size: 48px; margin-bottom: 20px; animation: spin 1s linear infinite;">⚙️</div>
+            <h2>Generating Study Materials</h2>
+            <p id="loadingMessage">Creating flashcards, quizzes, notes, and more based on your topic...</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">This may take 30-60 seconds</p>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
     <script>
         let currentSubject = 'geography';
         let currentTopic = null;
@@ -749,6 +771,128 @@
             renderContent();
         }
 
+        async function generateContentForTopic(topic, subject, apiKey) {
+            try {
+                document.getElementById('loadingModal').classList.add('active');
+                document.getElementById('loadingMessage').textContent = 'Calling Claude API...';
+
+                const prompt = `Generate comprehensive study materials for the topic: "${topic}" in the subject: "${subject}".
+
+Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this exact structure:
+{
+  "flashcards": [
+    {"question": "Question 1?", "answer": "Answer 1"},
+    {"question": "Question 2?", "answer": "Answer 2"},
+    {"question": "Question 3?", "answer": "Answer 3"},
+    {"question": "Question 4?", "answer": "Answer 4"},
+    {"question": "Question 5?", "answer": "Answer 5"},
+    {"question": "Question 6?", "answer": "Answer 6"},
+    {"question": "Question 7?", "answer": "Answer 7"},
+    {"question": "Question 8?", "answer": "Answer 8"},
+    {"question": "Question 9?", "answer": "Answer 9"},
+    {"question": "Question 10?", "answer": "Answer 10"}
+  ],
+  "quizzes": [
+    {"question": "Quiz question 1?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
+    {"question": "Quiz question 2?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"},
+    {"question": "Quiz question 3?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "C"},
+    {"question": "Quiz question 4?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "D"},
+    {"question": "Quiz question 5?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
+    {"question": "Quiz question 6?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"},
+    {"question": "Quiz question 7?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "C"},
+    {"question": "Quiz question 8?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "D"},
+    {"question": "Quiz question 9?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
+    {"question": "Quiz question 10?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"}
+  ],
+  "practices": [
+    {"question": "Practice essay question 1?", "answer": "Detailed answer 1..."},
+    {"question": "Practice essay question 2?", "answer": "Detailed answer 2..."},
+    {"question": "Practice essay question 3?", "answer": "Detailed answer 3..."},
+    {"question": "Practice essay question 4?", "answer": "Detailed answer 4..."},
+    {"question": "Practice essay question 5?", "answer": "Detailed answer 5..."}
+  ],
+  "mindmaps": [
+    {"main": "Central concept 1", "related": ["Concept A", "Concept B", "Concept C", "Concept D", "Concept E"]},
+    {"main": "Central concept 2", "related": ["Concept F", "Concept G", "Concept H", "Concept I", "Concept J"]},
+    {"main": "Central concept 3", "related": ["Concept K", "Concept L", "Concept M", "Concept N", "Concept O"]}
+  ],
+  "notes": [
+    {"title": "Note title 1", "content": "Note content with key points..."},
+    {"title": "Note title 2", "content": "Note content with key points..."},
+    {"title": "Note title 3", "content": "Note content with key points..."},
+    {"title": "Note title 4", "content": "Note content with key points..."},
+    {"title": "Note title 5", "content": "Note content with key points..."},
+    {"title": "Note title 6", "content": "Note content with key points..."},
+    {"title": "Note title 7", "content": "Note content with key points..."},
+    {"title": "Note title 8", "content": "Note content with key points..."},
+    {"title": "Note title 9", "content": "Note content with key points..."},
+    {"title": "Note title 10", "content": "Note content with key points..."}
+  ]
+}`;
+
+                document.getElementById('loadingMessage').textContent = 'Processing response...';
+
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-3-5-sonnet-20241022',
+                        max_tokens: 4000,
+                        messages: [
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || `API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const content = result.content[0].text;
+
+                // Try to extract JSON from the response
+                let jsonStr = content;
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    jsonStr = jsonMatch[0];
+                }
+
+                const generated = JSON.parse(jsonStr);
+
+                // Populate the data structure
+                data[currentSubject].topics[topic].flashcards = generated.flashcards || [];
+                data[currentSubject].topics[topic].quizzes = generated.quizzes || [];
+                data[currentSubject].topics[topic].practices = generated.practices || [];
+                data[currentSubject].topics[topic].mindmaps = generated.mindmaps || [];
+                data[currentSubject].topics[topic].notes = generated.notes.map(n => ({ ...n, date: new Date().toLocaleDateString() })) || [];
+
+                saveData();
+
+                document.getElementById('loadingModal').classList.remove('active');
+
+                const totalItems = (generated.flashcards?.length || 0) + (generated.quizzes?.length || 0) +
+                                   (generated.practices?.length || 0) + (generated.mindmaps?.length || 0) +
+                                   (generated.notes?.length || 0);
+
+                alert(`✅ Generated ${totalItems} study items!\n\n✓ ${generated.flashcards?.length || 0} flashcards\n✓ ${generated.quizzes?.length || 0} quiz questions\n✓ ${generated.practices?.length || 0} practice questions\n✓ ${generated.mindmaps?.length || 0} mind maps\n✓ ${generated.notes?.length || 0} study notes`);
+
+                renderContent();
+            } catch (error) {
+                document.getElementById('loadingModal').classList.remove('active');
+                console.error('Generation error:', error);
+                alert(`❌ Error generating content:\n\n${error.message}\n\nMake sure your API key is valid. Get one at https://console.anthropic.com`);
+            }
+        }
+
         function addTopic() {
             const input = document.getElementById('topicInput');
             const topic = input.value.trim();
@@ -768,6 +912,16 @@
             input.value = '';
             saveData();
             renderTopics();
+            selectTopic(topic);
+
+            // Check for API key and offer auto-generation
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (apiKey) {
+                const shouldGenerate = confirm(`🤖 Auto-generate study materials for "${topic}"?\n\nThis will create:\n✓ 10 flashcards\n✓ 10 quiz questions\n✓ 5 practice questions\n✓ 3 mind maps\n✓ 10 study notes\n\nClick OK to generate, Cancel to create manually.`);
+                if (shouldGenerate) {
+                    generateContentForTopic(topic, currentSubject, apiKey);
+                }
+            }
         }
 
         function deleteTopic(topic) {
