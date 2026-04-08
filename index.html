@@ -378,6 +378,38 @@
             color: white;
         }
 
+        .curriculum-textarea {
+            min-height: 260px;
+            resize: vertical;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .curriculum-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .curriculum-status.has-content {
+            background: rgba(39, 174, 96, 0.15);
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+
+        .curriculum-status.no-content {
+            background: rgba(139, 148, 158, 0.15);
+            color: #8b949e;
+            border: 1px solid #2a3a4a;
+        }
+
+        .strategy-card.no-curriculum { border-left-color: #f39c12; }
+        .strategy-card.has-curriculum { border-left-color: #27ae60; }
+
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -769,6 +801,42 @@
         }
     </style>
 
+    <!-- Curriculum Modal -->
+    <div class="modal" id="curriculumModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <button class="modal-close" onclick="closeModal('curriculumModal')">✕</button>
+            <h2>
+                My Curriculum
+                <span id="curriculumStatusBadge" class="curriculum-status no-content">No content</span>
+            </h2>
+            <p style="color: #8b949e; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+                Paste your class notes, textbook excerpts, or syllabus bullet points below.
+                When you generate study materials, Claude will draw <strong style="color: #c9d1d9;">only</strong>
+                from this text — no outside knowledge added.
+            </p>
+            <div class="form-group">
+                <label for="curriculumText" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Your source material</span>
+                    <span id="curriculumCharCount" style="font-size: 12px; color: #6b7280;">0 characters</span>
+                </label>
+                <textarea
+                    id="curriculumText"
+                    class="curriculum-textarea"
+                    placeholder="Paste your notes, textbook content, or syllabus here...&#10;&#10;Example:&#10;• The water cycle consists of evaporation, condensation and precipitation&#10;• Evaporation: water turns to vapour when heated by the sun&#10;• Rivers carry fresh water from highlands to the sea"
+                    oninput="updateCurriculumCharCount()"
+                ></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="saveCurriculum()">Save Curriculum</button>
+                <button class="btn btn-secondary" onclick="clearCurriculum()">Clear</button>
+                <button class="btn btn-secondary" onclick="closeModal('curriculumModal')">Cancel</button>
+            </div>
+            <p style="margin-top: 16px; color: #6b7280; font-size: 12px;">
+                Tip: The more detail you paste, the more accurate your generated questions will be. You can update this at any time.
+            </p>
+        </div>
+    </div>
+
     <script>
         let currentSubject = 'geography';
         let currentTopic = null;
@@ -830,59 +898,35 @@
                 document.getElementById('loadingModal').classList.add('active');
                 document.getElementById('loadingMessage').textContent = 'Calling Claude API...';
 
-                const prompt = `Generate comprehensive study materials for the topic: "${topic}" in the subject: "${subject}".
+                const topicData = data[currentSubject].topics[topic];
+                const curriculum = (topicData.curriculum || '').trim();
 
-Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this exact structure:
+                const jsonSchema = `Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this exact structure:
 {
-  "flashcards": [
-    {"question": "Question 1?", "answer": "Answer 1"},
-    {"question": "Question 2?", "answer": "Answer 2"},
-    {"question": "Question 3?", "answer": "Answer 3"},
-    {"question": "Question 4?", "answer": "Answer 4"},
-    {"question": "Question 5?", "answer": "Answer 5"},
-    {"question": "Question 6?", "answer": "Answer 6"},
-    {"question": "Question 7?", "answer": "Answer 7"},
-    {"question": "Question 8?", "answer": "Answer 8"},
-    {"question": "Question 9?", "answer": "Answer 9"},
-    {"question": "Question 10?", "answer": "Answer 10"}
-  ],
-  "quizzes": [
-    {"question": "Quiz question 1?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
-    {"question": "Quiz question 2?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"},
-    {"question": "Quiz question 3?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "C"},
-    {"question": "Quiz question 4?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "D"},
-    {"question": "Quiz question 5?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
-    {"question": "Quiz question 6?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"},
-    {"question": "Quiz question 7?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "C"},
-    {"question": "Quiz question 8?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "D"},
-    {"question": "Quiz question 9?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "A"},
-    {"question": "Quiz question 10?", "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}, "correct": "B"}
-  ],
-  "practices": [
-    {"question": "Practice essay question 1?", "answer": "Detailed answer 1..."},
-    {"question": "Practice essay question 2?", "answer": "Detailed answer 2..."},
-    {"question": "Practice essay question 3?", "answer": "Detailed answer 3..."},
-    {"question": "Practice essay question 4?", "answer": "Detailed answer 4..."},
-    {"question": "Practice essay question 5?", "answer": "Detailed answer 5..."}
-  ],
-  "mindmaps": [
-    {"main": "Central concept 1", "related": ["Concept A", "Concept B", "Concept C", "Concept D", "Concept E"]},
-    {"main": "Central concept 2", "related": ["Concept F", "Concept G", "Concept H", "Concept I", "Concept J"]},
-    {"main": "Central concept 3", "related": ["Concept K", "Concept L", "Concept M", "Concept N", "Concept O"]}
-  ],
-  "notes": [
-    {"title": "Note title 1", "content": "Note content with key points..."},
-    {"title": "Note title 2", "content": "Note content with key points..."},
-    {"title": "Note title 3", "content": "Note content with key points..."},
-    {"title": "Note title 4", "content": "Note content with key points..."},
-    {"title": "Note title 5", "content": "Note content with key points..."},
-    {"title": "Note title 6", "content": "Note content with key points..."},
-    {"title": "Note title 7", "content": "Note content with key points..."},
-    {"title": "Note title 8", "content": "Note content with key points..."},
-    {"title": "Note title 9", "content": "Note content with key points..."},
-    {"title": "Note title 10", "content": "Note content with key points..."}
-  ]
+  "flashcards": [{"question": "...", "answer": "..."}, ...up to 10],
+  "quizzes": [{"question": "...", "options": {"A": "...", "B": "...", "C": "...", "D": "..."}, "correct": "A"}, ...up to 10],
+  "practices": [{"question": "...", "answer": "..."}, ...up to 5],
+  "mindmaps": [{"main": "...", "related": ["...", "...", "...", "...", "..."]}, ...up to 3],
+  "notes": [{"title": "...", "content": "..."}, ...up to 10]
 }`;
+
+                const prompt = curriculum
+                    ? `You are a study material generator. A student has provided their own class notes below. Generate study materials STRICTLY based on this content — do NOT introduce any facts, concepts, dates, names or details that are not in the student's notes. If the notes are brief, generate fewer but focused questions rather than inventing content.
+
+STUDENT'S NOTES FOR "${topic}" (${subject}):
+---
+${curriculum}
+---
+
+RULES:
+- Every question MUST be answerable using only the notes above
+- Do NOT add general knowledge not mentioned in the notes
+- Base the number of items on how much content is available
+
+${jsonSchema}`
+                    : `Generate comprehensive study materials for the topic: "${topic}" in the subject: "${subject}".
+
+${jsonSchema}`;
 
                 document.getElementById('loadingMessage').textContent = 'Processing response...';
 
@@ -960,7 +1004,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
                 notes: [],
                 mindmaps: [],
                 practices: [],
-                spacedRep: []
+                spacedRep: [],
+                curriculum: ''
             };
 
             input.value = '';
@@ -971,7 +1016,7 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
             // Check for API key and offer auto-generation
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             if (apiKey) {
-                const shouldGenerate = confirm(`🤖 Auto-generate study materials for "${topic}"?\n\nThis will create:\n✓ 10 flashcards\n✓ 10 quiz questions\n✓ 5 practice questions\n✓ 3 mind maps\n✓ 10 study notes\n\nClick OK to generate, Cancel to create manually.`);
+                const shouldGenerate = confirm(`🤖 Auto-generate study materials for "${topic}"?\n\nTip: Click "My Curriculum" first and paste your class notes for questions based only on what you've studied.\n\nThis will create:\n✓ 10 flashcards\n✓ 10 quiz questions\n✓ 5 practice questions\n✓ 3 mind maps\n✓ 10 study notes\n\nClick OK to generate now, Cancel to add curriculum first.`);
                 if (shouldGenerate) {
                     generateContentForTopic(topic, currentSubject, apiKey);
                 }
@@ -988,6 +1033,41 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
             }
         }
 
+        function openCurriculumModal() {
+            const curriculum = (data[currentSubject].topics[currentTopic].curriculum || '');
+            document.getElementById('curriculumText').value = curriculum;
+            updateCurriculumCharCount();
+            openModal('curriculumModal');
+        }
+
+        function updateCurriculumCharCount() {
+            const text = document.getElementById('curriculumText').value;
+            document.getElementById('curriculumCharCount').textContent = `${text.length.toLocaleString()} characters`;
+            const badge = document.getElementById('curriculumStatusBadge');
+            if (text.trim().length > 0) {
+                badge.textContent = 'Content added';
+                badge.className = 'curriculum-status has-content';
+            } else {
+                badge.textContent = 'No content';
+                badge.className = 'curriculum-status no-content';
+            }
+        }
+
+        function saveCurriculum() {
+            const text = document.getElementById('curriculumText').value.trim();
+            data[currentSubject].topics[currentTopic].curriculum = text;
+            saveData();
+            closeModal('curriculumModal');
+            renderContent();
+        }
+
+        function clearCurriculum() {
+            if (!confirm('Clear all curriculum text for this topic?')) return;
+            document.getElementById('curriculumText').value = '';
+            updateCurriculumCharCount();
+        }
+
+
         function renderContent() {
             const content = document.getElementById('content');
 
@@ -995,6 +1075,13 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
                 content.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: white; font-size: 18px;">Select or create a topic to get started</p>';
                 return;
             }
+
+            const hasCurriculum = !!(data[currentSubject].topics[currentTopic].curriculum || '').trim();
+            const curriculumClass = hasCurriculum ? 'has-curriculum' : 'no-curriculum';
+            const curriculumIcon = hasCurriculum ? '📋' : '📄';
+            const curriculumDesc = hasCurriculum
+                ? 'Your source material is loaded. AI will generate questions only from your curriculum.'
+                : 'No curriculum yet. Paste your notes so AI only asks about what you\'ve studied.';
 
             content.innerHTML = `
                 <div class="strategy-card" onclick="openModal('flashcardModal'); loadFlashcards()">
@@ -1037,6 +1124,12 @@ Return ONLY valid JSON (no markdown, no code blocks, no extra text) with this ex
                     <div class="icon">⏰</div>
                     <h2>Spaced Repetition</h2>
                     <p>Review material at optimal intervals for retention.</p>
+                </div>
+
+                <div class="strategy-card ${curriculumClass}" onclick="openCurriculumModal()">
+                    <div class="icon">${curriculumIcon}</div>
+                    <h2>My Curriculum</h2>
+                    <p>${curriculumDesc}</p>
                 </div>
             `;
         }
