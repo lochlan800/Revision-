@@ -904,6 +904,25 @@
             currentTopic = topic;
             renderTopics();
             renderContent();
+
+            // If topic has no content yet and an API key is entered, offer to generate
+            const topicData = data[currentSubject].topics[topic];
+            const hasContent = (topicData.flashcards || []).length > 0 ||
+                               (topicData.quizzes || []).length > 0 ||
+                               (topicData.notes || []).length > 0 ||
+                               (topicData.practices || []).length > 0;
+
+            if (!hasContent) {
+                const apiKey = document.getElementById('apiKeyInput').value.trim();
+                if (apiKey) {
+                    setTimeout(() => {
+                        const shouldGenerate = confirm(`🤖 No study materials yet for "${topic}".\n\nAuto-generate now?\n\nThis will create:\n✓ 10 flashcards\n✓ 10 quiz questions\n✓ 5 practice questions\n✓ 3 mind maps\n✓ 10 study notes\n\nClick OK to generate, or Cancel to add your own.`);
+                        if (shouldGenerate) {
+                            generateContentForTopic(topic, currentSubject, apiKey);
+                        }
+                    }, 50);
+                }
+            }
         }
 
         async function generateContentForTopic(topic, subject, apiKey) {
