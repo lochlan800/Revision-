@@ -1930,7 +1930,7 @@ ${jsonSchema}`;
                 else line = candidate;
             }
             if (line) result.push(line);
-            return result.slice(0, 2);
+            return result;
         }
 
         function renderMindMapList() {
@@ -1965,7 +1965,7 @@ ${jsonSchema}`;
                     const textEls = words.map((w, wi) =>
                         `<text x="${lx}" y="${+(ly + wi * 15 - (words.length - 1) * 7.5).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="#e2e8f0" font-size="11" font-family="Segoe UI,sans-serif" font-weight="500">${w}</text>`
                     ).join('');
-                    return `<ellipse cx="${lx}" cy="${ly}" rx="68" ry="38" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2"/>
+                    return `<ellipse cx="${lx}" cy="${ly}" rx="68" ry="50" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2"/>
                             ${textEls}`;
                 }).join('');
 
@@ -1978,7 +1978,7 @@ ${jsonSchema}`;
                     <svg viewBox="0 0 500 380" style="width:100%;display:block;">
                         ${svgLines}
                         ${svgLeaves}
-                        <ellipse cx="${cx}" cy="${cy}" rx="76" ry="44" fill="#1a4a7a" stroke="#4a90d9" stroke-width="2.5"/>
+                        <ellipse cx="${cx}" cy="${cy}" rx="76" ry="55" fill="#1a4a7a" stroke="#4a90d9" stroke-width="2.5"/>
                         ${mainTextEls}
                     </svg>
                     <div style="text-align:right;padding-top:2px;">
