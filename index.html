@@ -1919,6 +1919,20 @@ ${jsonSchema}`;
             renderMindMapList();
         }
 
+        function wrapSvgText(text, maxLen) {
+            if (text.length <= maxLen) return [text];
+            const words = text.split(' ');
+            const result = [];
+            let line = '';
+            for (const w of words) {
+                const candidate = line ? line + ' ' + w : w;
+                if (candidate.length > maxLen) { if (line) result.push(line); line = w; }
+                else line = candidate;
+            }
+            if (line) result.push(line);
+            return result.slice(0, 2);
+        }
+
         function renderMindMapList() {
             const mindmaps = data[currentSubject].topics[currentTopic].mindmaps || [];
             const container = document.getElementById('mindmapList');
@@ -1928,13 +1942,50 @@ ${jsonSchema}`;
                 return;
             }
 
-            container.innerHTML = mindmaps.map((mm, i) => `
-                <div style="background: #f0f4ff; padding: 15px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid var(--primary);">
-                    <strong style="color: var(--primary);">${mm.main}</strong><br>
-                    <small>${mm.related.join(' → ')}</small><br>
-                    <button class="btn btn-danger" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;" onclick="deleteMindMap(${i})">Delete</button>
-                </div>
-            `).join('');
+            const COLORS = ['#4a90d9','#34d399','#f59e0b','#a78bfa','#f87171','#06b6d4','#fb923c','#ec4899'];
+            const cx = 250, cy = 190, r = 140;
+
+            container.innerHTML = mindmaps.map((mm, idx) => {
+                const n = mm.related.length || 1;
+
+                const svgLines = mm.related.map((rel, i) => {
+                    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+                    const lx = +(cx + r * Math.cos(angle)).toFixed(1);
+                    const ly = +(cy + r * Math.sin(angle)).toFixed(1);
+                    const color = COLORS[i % COLORS.length];
+                    return `<line x1="${cx}" y1="${cy}" x2="${lx}" y2="${ly}" stroke="${color}" stroke-width="2.5" stroke-opacity="0.6"/>`;
+                }).join('');
+
+                const svgLeaves = mm.related.map((rel, i) => {
+                    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+                    const lx = +(cx + r * Math.cos(angle)).toFixed(1);
+                    const ly = +(cy + r * Math.sin(angle)).toFixed(1);
+                    const color = COLORS[i % COLORS.length];
+                    const words = wrapSvgText(rel, 13);
+                    const textEls = words.map((w, wi) =>
+                        `<text x="${lx}" y="${+(ly + wi * 13 - (words.length - 1) * 6.5).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="#e2e8f0" font-size="11" font-family="Segoe UI,sans-serif">${w}</text>`
+                    ).join('');
+                    return `<ellipse cx="${lx}" cy="${ly}" rx="46" ry="24" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="2"/>
+                            ${textEls}`;
+                }).join('');
+
+                const mainWords = wrapSvgText(mm.main, 15);
+                const mainTextEls = mainWords.map((w, wi) =>
+                    `<text x="${cx}" y="${+(cy + wi * 15 - (mainWords.length - 1) * 7.5).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="13" font-weight="700" font-family="Segoe UI,sans-serif">${w}</text>`
+                ).join('');
+
+                return `<div style="background:#0d1117;border:1px solid #2a3a4a;border-radius:10px;margin-bottom:16px;padding:12px;">
+                    <svg viewBox="0 0 500 380" style="width:100%;display:block;">
+                        ${svgLines}
+                        ${svgLeaves}
+                        <ellipse cx="${cx}" cy="${cy}" rx="62" ry="34" fill="#1a4a7a" stroke="#4a90d9" stroke-width="2.5"/>
+                        ${mainTextEls}
+                    </svg>
+                    <div style="text-align:right;padding-top:2px;">
+                        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteMindMap(${idx})">Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function deleteMindMap(index) {
