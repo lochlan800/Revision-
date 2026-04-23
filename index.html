@@ -596,6 +596,60 @@
         .marking-good .marking-score { color: #34d399; }
         .marking-ok .marking-score { color: #f59e0b; }
         .marking-low .marking-score { color: #f87171; }
+
+        /* Points Bar */
+        .points-bar {
+            margin-top: 16px;
+            background: linear-gradient(135deg, #111827 0%, #0d1117 100%);
+            border: 1px solid #2a3a4a;
+            border-radius: 8px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        .level-badge {
+            background: linear-gradient(135deg, #4a90d9, #2c6fad);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .points-total { font-size: 15px; font-weight: 700; color: #f0c040; white-space: nowrap; }
+        .streak-display { font-size: 14px; font-weight: 700; color: #fb923c; white-space: nowrap; }
+        .points-progress-wrap { flex: 1; min-width: 120px; }
+        .points-progress-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+        .points-progress-bar { height: 7px; background: #2a3a4a; border-radius: 4px; overflow: hidden; }
+        .points-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a90d9, #34d399);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+        /* Toast */
+        .points-toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: linear-gradient(135deg, #1a2332, #0d1117);
+            border: 1px solid #4a90d9;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(74,144,217,0.35);
+            animation: toastSlideIn 0.3s ease;
+            pointer-events: none;
+        }
+        @keyframes toastSlideIn {
+            from { transform: translateY(16px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -613,6 +667,17 @@
                 <label for="apiKeyInput" style="margin: 0; font-weight: 600; color: #c9d1d9;">Claude API Key:</label>
                 <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex: 1; max-width: 300px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #c9d1d9;">
                 <small style="color: #6b7280; flex: 1;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--primary); text-decoration: none;">console.anthropic.com</a></small>
+            </div>
+            <div class="points-bar">
+                <span class="level-badge" id="levelBadge">Level 1 • Rookie</span>
+                <span class="points-total" id="pointsTotal">⭐ 0 pts</span>
+                <span class="streak-display" id="streakDisplay">🔥 0 day streak</span>
+                <div class="points-progress-wrap">
+                    <div class="points-progress-label" id="progressLabel">0 / 100 to Level 2</div>
+                    <div class="points-progress-bar">
+                        <div class="points-progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -857,6 +922,82 @@
         let flashcardSessionReviewed = new Set();  // track which cards rated this session
         let isShuffled = false;
 
+        // ── Points System ─────────────────────────────────────────────────────
+        let pointsData = { total: 0, streak: 0, lastActiveDate: null };
+
+        function savePoints() { localStorage.setItem('studyhubPoints', JSON.stringify(pointsData)); }
+        function loadPoints() {
+            const saved = localStorage.getItem('studyhubPoints');
+            if (saved) Object.assign(pointsData, JSON.parse(saved));
+        }
+
+        const LEVELS = [
+            { level: 1, name: 'Rookie',   min: 0    },
+            { level: 2, name: 'Student',  min: 100  },
+            { level: 3, name: 'Scholar',  min: 300  },
+            { level: 4, name: 'Academic', min: 600  },
+            { level: 5, name: 'Expert',   min: 1000 },
+            { level: 6, name: 'Master',   min: 1500 },
+            { level: 7, name: 'Legend',   min: 2500 },
+        ];
+
+        function getLevelInfo(total) {
+            let idx = 0;
+            for (let i = LEVELS.length - 1; i >= 0; i--) {
+                if (total >= LEVELS[i].min) { idx = i; break; }
+            }
+            const l = LEVELS[idx], next = LEVELS[idx + 1];
+            const progress = next ? Math.round(((total - l.min) / (next.min - l.min)) * 100) : 100;
+            return { ...l, nextLevel: next ? next.level : null, nextMin: next ? next.min : null, progress };
+        }
+
+        function updateStreak() {
+            const today = new Date().toISOString().split('T')[0];
+            if (pointsData.lastActiveDate === today) return;
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            pointsData.streak = pointsData.lastActiveDate === yesterday ? pointsData.streak + 1 : 1;
+            pointsData.lastActiveDate = today;
+        }
+
+        function renderPointsBar() {
+            const info = getLevelInfo(pointsData.total);
+            document.getElementById('levelBadge').textContent = `Level ${info.level} • ${info.name}`;
+            document.getElementById('pointsTotal').textContent = `⭐ ${pointsData.total.toLocaleString()} pts`;
+            document.getElementById('streakDisplay').textContent = `🔥 ${pointsData.streak} day streak`;
+            document.getElementById('progressLabel').textContent = info.nextMin
+                ? `${pointsData.total - info.min} / ${info.nextMin - info.min} to Level ${info.nextLevel}`
+                : 'Max level — Legend status!';
+            document.getElementById('progressFill').style.width = `${info.progress}%`;
+        }
+
+        let toastTimeout = null;
+        function showPointsToast(amount, reason) {
+            const existing = document.getElementById('pointsToast');
+            if (existing) existing.remove();
+            if (toastTimeout) clearTimeout(toastTimeout);
+            const toast = document.createElement('div');
+            toast.id = 'pointsToast';
+            toast.className = 'points-toast';
+            toast.textContent = `+${amount} pts — ${reason}`;
+            document.body.appendChild(toast);
+            toastTimeout = setTimeout(() => toast.remove(), 2500);
+        }
+
+        function addPoints(amount, reason) {
+            const prevLevel = getLevelInfo(pointsData.total).level;
+            updateStreak();
+            pointsData.total += amount;
+            const newLevel = getLevelInfo(pointsData.total).level;
+            savePoints();
+            renderPointsBar();
+            showPointsToast(amount, reason);
+            if (newLevel > prevLevel) {
+                const info = getLevelInfo(pointsData.total);
+                setTimeout(() => alert(`🎉 Level Up! You reached Level ${info.level}: ${info.name}!`), 300);
+            }
+        }
+        // ── End Points System ──────────────────────────────────────────────────
+
         const data = {
             geography: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
             history: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
@@ -1008,6 +1149,7 @@ ${jsonSchema}`;
                 data[currentSubject].topics[topic].notes = (generated.notes || []).map(n => ({ ...n, date: new Date().toLocaleDateString() }));
 
                 saveData();
+                addPoints(25, 'Study materials generated');
 
                 document.getElementById('loadingModal').classList.remove('active');
 
@@ -1044,6 +1186,7 @@ ${jsonSchema}`;
 
             input.value = '';
             saveData();
+            addPoints(5, 'New topic created');
             renderTopics();
             selectTopic(topic);
 
@@ -1369,6 +1512,8 @@ ${jsonSchema}`;
 
             flashcardSessionReviewed.add(realIndex);
             saveData();
+            const fcPts = rating === 'easy' ? 10 : rating === 'hard' ? 5 : 2;
+            addPoints(fcPts, `Flashcard: ${rating}`);
 
             // Auto-advance to next card
             const cards = data[currentSubject].topics[currentTopic].flashcards;
@@ -1382,6 +1527,7 @@ ${jsonSchema}`;
 
             // Show session complete message
             if (flashcardSessionReviewed.size === cards.length) {
+                addPoints(20, 'Flashcard session complete!');
                 setTimeout(() => alert('Session complete! You\'ve rated all cards.'), 100);
             }
         }
@@ -1425,6 +1571,7 @@ ${jsonSchema}`;
             });
 
             saveData();
+            addPoints(3, 'Flashcard created');
             document.getElementById('createFlashcardModal').querySelector('form').reset();
             closeModal('createFlashcardModal');
             loadFlashcards();
@@ -1454,6 +1601,7 @@ ${jsonSchema}`;
             });
 
             saveData();
+            addPoints(3, 'Quiz question created');
             document.getElementById('quizModal').querySelector('form').reset();
             closeModal('quizModal');
         }
@@ -1536,7 +1684,9 @@ ${jsonSchema}`;
             });
 
             const percentage = Math.round((score / quizzes.length) * 100);
-            alert(`Quiz Complete!\nScore: ${score} / ${quizzes.length} (${percentage}%)`);
+            const quizPts = score * 15 + (percentage === 100 ? 50 : 0);
+            addPoints(quizPts, percentage === 100 ? 'Perfect quiz! 🎯' : `Quiz complete (${percentage}%)`);
+            alert(`Quiz Complete!\nScore: ${score} / ${quizzes.length} (${percentage}%)\n⭐ +${quizPts} points!`);
             closeModal('takeQuizModal');
         }
 
@@ -1564,6 +1714,7 @@ ${jsonSchema}`;
             });
 
             saveData();
+            addPoints(3, 'Note saved');
             document.getElementById('notesModal').querySelector('form').reset();
             renderNotesList();
         }
@@ -1617,6 +1768,7 @@ ${jsonSchema}`;
             });
 
             saveData();
+            addPoints(3, 'Mind map created');
             document.getElementById('mindmapModal').querySelector('form').reset();
             renderMindMapList();
         }
@@ -1670,6 +1822,7 @@ ${jsonSchema}`;
             });
 
             saveData();
+            addPoints(3, 'Practice question added');
             document.getElementById('practiceModal').querySelector('form').reset();
             renderPracticeList();
         }
@@ -1827,6 +1980,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                     date: new Date().toLocaleDateString()
                 });
                 saveData();
+                addPoints(10 + Math.round(score * 3), `Practice marked (${score}/10)`);
 
                 // Update button text with new attempt count
                 markBtn.disabled = false;
@@ -2056,6 +2210,8 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
 
             const labels = { 1: 'Again', 3: 'Hard', 4: 'Good', 5: 'Easy' };
             srSessionResults.push({ index: cardIndex, quality, label: labels[quality] || 'Unknown' });
+            const srPts = quality === 5 ? 10 : quality === 4 ? 8 : quality === 3 ? 5 : 2;
+            addPoints(srPts, `Spaced rep: ${labels[quality] || 'reviewed'}`);
 
             srReviewIndex++;
             const container = document.getElementById('spacedRepContainer');
@@ -2087,6 +2243,8 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
 
         // Initialization
         loadData();
+        loadPoints();
+        renderPointsBar();
         renderTopics();
         renderContent();
 
