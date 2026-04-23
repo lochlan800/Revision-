@@ -2064,12 +2064,25 @@ Keep descriptions under 15 words. Return only the JSON array.`;
                         messages: [{ role: 'user', content: prompt }]
                     })
                 });
+                if (!response.ok) {
+                    const errBody = await response.json().catch(() => ({}));
+                    throw new Error(errBody.error?.message || `API error: ${response.status}`);
+                }
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.error?.message || 'API error');
-                const text = result.content[0].text;
-                const jsonMatch = text.match(/\[[\s\S]*\]/);
-                if (!jsonMatch) throw new Error('Invalid response format');
-                const resources = JSON.parse(jsonMatch[0]);
+                const text = result.content?.[0]?.text;
+                if (!text) throw new Error('No content returned from API');
+                const cleaned = text.replace(/```json\s*|```/g, '').trim();
+                const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) throw new Error('Response did not contain a JSON array');
+                let resources;
+                try {
+                    resources = JSON.parse(jsonMatch[0]);
+                } catch (e) {
+                    throw new Error('Failed to parse JSON: ' + e.message);
+                }
+                if (!Array.isArray(resources) || resources.length === 0) {
+                    throw new Error('No resources returned');
+                }
                 if (!data[currentSubject].topics[currentTopic].resources) {
                     data[currentSubject].topics[currentTopic].resources = [];
                 }
@@ -2078,7 +2091,8 @@ Keep descriptions under 15 words. Return only the JSON array.`;
                 addPoints(10, 'Resources generated');
                 loadResources();
             } catch (err) {
-                alert('Failed to generate resources. Check your API key and try again.');
+                console.error('generateResources error:', err);
+                alert('Failed to generate resources.\n\n' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🤖 Generate Resources';
