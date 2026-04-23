@@ -1273,6 +1273,7 @@
 
         function addPoints(amount, reason) {
             const prevLevel = getLevelInfo(pointsData.total).level;
+            const prevStreak = pointsData.streak;
             updateStreak();
             pointsData.total += amount;
             const newLevel = getLevelInfo(pointsData.total).level;
@@ -1283,6 +1284,10 @@
             if (newLevel > prevLevel) {
                 const info = getLevelInfo(pointsData.total);
                 setTimeout(() => alert(`🎉 Level Up! You reached Level ${info.level}: ${info.name}!`), 300);
+                setTimeout(() => coachPopupTip('level_up'), 600);
+            }
+            if (pointsData.streak > 0 && pointsData.streak % 7 === 0 && pointsData.streak !== prevStreak) {
+                setTimeout(() => coachPopupTip('streak_milestone'), 300);
             }
         }
         // ── End Points System ──────────────────────────────────────────────────
@@ -2083,6 +2088,7 @@ ${jsonSchema}`;
             const quizPts = score * 15 + (percentage === 100 ? 50 : 0);
             addPoints(quizPts, percentage === 100 ? 'Perfect quiz! 🎯' : `Quiz complete (${percentage}%)`);
             alert(`Quiz Complete!\nScore: ${score} / ${quizzes.length} (${percentage}%)\n⭐ +${quizPts} points!`);
+            coachPopupTip('quiz_done');
             closeModal('takeQuizModal');
         }
 
@@ -2427,10 +2433,12 @@ TIPS TO IMPROVE:
                 pomodoroMode = 'break';
                 pomodoroTimeLeft = POMODORO_BREAK_TIME;
                 alert(`🎉 Work session complete! ${pomodoroSessionCount} pomodoro(s) done. Take a 5-minute break.`);
+                coachPopupTip('pomodoro_complete');
             } else {
                 pomodoroMode = 'work';
                 pomodoroTimeLeft = POMODORO_WORK_TIME;
                 alert('✨ Break over! Ready for another work session?');
+                coachPopupTip('break_complete');
             }
             updatePomodoroDisplay();
             savePomodoroState();
@@ -2617,6 +2625,75 @@ Speak like a friendly human coach — warm, energetic, and direct.`;
             };
             document.getElementById('coachInput').value = prompts[type];
             await sendCoachMessage();
+        }
+
+        async function coachPopupTip(trigger) {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) return;
+
+            const tipPrompts = {
+                pomodoro_complete: `The student just completed a 25-minute work pomodoro session! Give them a SHORT (1-2 sentence) energetic congratulations and a specific tip for their next session. Reference their current streak: ${pointsData.streak} days. Be punchy!`,
+                break_complete: `The student's break is over! Give them a SHORT (1-2 sentence) motivational message to start the next work session. Keep it brief and energetic!`,
+                quiz_done: `The student just finished a quiz! Give them SHORT (1-2 sentence) feedback. If they did well, celebrate. If not, be encouraging and suggest what to review. Keep it real and brief.`,
+                level_up: `The student just reached Level ${getLevelInfo(pointsData.total).level} (${getLevelInfo(pointsData.total).name})! Give them a SHORT (1-2 sentence) excited congratulations message!`,
+                streak_milestone: `The student's study streak is now ${pointsData.streak} days! Give them a SHORT (1-2 sentence) motivational celebration. Make it feel earned!`
+            };
+
+            const prompt = tipPrompts[trigger];
+            if (!prompt) return;
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-haiku-4-5-20251001',
+                        max_tokens: 120,
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+
+                if (!response.ok) return;
+                const result = await response.json();
+                const tip = result.content?.[0]?.text;
+                if (!tip) return;
+
+                showCoachToast(tip);
+            } catch (e) {
+                console.log('Coach tip not available');
+            }
+        }
+
+        function showCoachToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position:fixed; bottom:130px; right:20px; z-index:10000;
+                background:#FFE94E; border:3px solid #000; border-radius:4px;
+                padding:12px 16px; max-width:280px; box-shadow:6px 6px 0 #000;
+                font-family:Arial,sans-serif; font-size:13px; line-height:1.5;
+                color:#000; font-weight:bold; animation:slideIn 0.3s ease;
+            `;
+            const style = document.createElement('style');
+            style.textContent = `@keyframes slideIn { from { transform: translateX(300px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
+            document.head.appendChild(style);
+            toast.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <span>🧠</span>
+                <div style="flex:1; margin-left:8px;">${message}</div>
+                <button onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; font-size:16px; cursor:pointer; padding:0; margin-left:8px;">✕</button>
+            </div>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.animation = 'slideOut 0.3s ease forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
         }
 
         // Mind Map Functions
