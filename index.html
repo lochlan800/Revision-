@@ -945,7 +945,7 @@
             <div id="transcriptSection" style="display:none;">
                 <label style="display:block; font-weight:bold; margin-bottom:8px;">Your Explanation (Transcribed):</label>
                 <textarea id="feynmanTranscript" style="width:100%; min-height:120px; padding:8px; border:2px solid #000; border-radius:2px; font-family:Arial,sans-serif; font-size:0.95em;" placeholder="Transcript will appear here..."></textarea>
-                <button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="evaluateFeynmanExplanation()">✅ Evaluate My Explanation</button>
+                <button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="evaluateFeynmanExplanation(event)">✅ Evaluate My Explanation</button>
             </div>
 
             <!-- Feedback Section -->
@@ -2233,7 +2233,7 @@ Keep descriptions under 15 words. Return only the JSON array.`;
             }
         }
 
-        async function evaluateFeynmanExplanation() {
+        async function evaluateFeynmanExplanation(event) {
             const transcript = document.getElementById('feynmanTranscript').value.trim();
             if (!transcript) {
                 alert('Please record an explanation first.');
@@ -2245,9 +2245,11 @@ Keep descriptions under 15 words. Return only the JSON array.`;
                 return;
             }
 
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = '⏳ Evaluating...';
+            const btn = event?.target || document.querySelector('#feynmanModal button.btn-primary');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Evaluating...';
+            }
 
             const topicData = data[currentSubject].topics[currentTopic];
             const hasContent = (topicData.flashcards || []).length > 0 || (topicData.practices || []).length > 0;
@@ -2324,8 +2326,10 @@ TIPS TO IMPROVE:
                 console.error('evaluateFeynmanExplanation error:', err);
                 alert('Failed to evaluate explanation.\n\n' + err.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = '✅ Evaluate My Explanation';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✅ Evaluate My Explanation';
+                }
             }
         }
 
