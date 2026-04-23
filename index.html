@@ -916,21 +916,16 @@
     <div class="modal" id="notesModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('notesModal')">✕</button>
-            <h2>Add Notes</h2>
+            <h2>📝 Notes</h2>
             <form onsubmit="saveNote(event)">
                 <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="noteTitle" required>
+                    <textarea id="noteContent" placeholder="Write your note..." style="min-height: 80px;" required></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Content</label>
-                    <textarea id="noteContent" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Save Note</button>
+                <button type="submit" class="btn btn-primary">Save</button>
             </form>
-            <hr style="margin: 20px 0;">
-            <h3>Your Notes</h3>
-            <ul class="notes-list" id="notesList"></ul>
+            <div style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+                <ul class="notes-list" id="notesList"></ul>
+            </div>
         </div>
     </div>
 
@@ -1941,17 +1936,16 @@ ${jsonSchema}`;
 
         function saveNote(e) {
             e.preventDefault();
-            const title = document.getElementById('noteTitle').value;
             const content = document.getElementById('noteContent').value;
+
+            if (!content.trim()) return alert('Write something!');
 
             if (!data[currentSubject].topics[currentTopic].notes) {
                 data[currentSubject].topics[currentTopic].notes = [];
             }
 
             data[currentSubject].topics[currentTopic].notes.push({
-                title,
-                content,
-                date: new Date().toLocaleDateString()
+                content
             });
 
             saveData();
@@ -1965,17 +1959,15 @@ ${jsonSchema}`;
             const container = document.getElementById('notesList');
 
             if (notes.length === 0) {
-                container.innerHTML = '<li>No notes yet. Add one above!</li>';
+                container.innerHTML = '<p style="text-align: center; color: #000; font-weight: 600;">No notes yet</p>';
                 return;
             }
 
             container.innerHTML = notes.map((note, i) => `
-                <li class="note-item">
-                    <strong>${note.title}</strong>
-                    <p>${note.content}</p>
-                    <small>${note.date}</small>
-                    <button class="btn btn-danger" style="margin-top: 10px;" onclick="deleteNote(${i})">Delete</button>
-                </li>
+                <div style="background: #FFF; padding: 12px; margin-bottom: 8px; border: 2px solid #000; border-radius: 2px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                    <p style="margin: 0; color: #000; flex: 1; font-size: 14px; line-height: 1.5;">${note.content}</p>
+                    <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; white-space: nowrap;" onclick="deleteNote(${i})">Delete</button>
+                </div>
             `).join('');
         }
 
