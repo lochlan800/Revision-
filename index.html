@@ -1278,6 +1278,7 @@
             pointsData.total += amount;
             const newLevel = getLevelInfo(pointsData.total).level;
             savePoints();
+            generateFakeCompetitors(pointsData.total);
             renderPointsBar();
             showPointsToast(amount, reason);
             updateLeaderboardOnPointsGain();
@@ -1348,6 +1349,9 @@
         }
 
         function renderLeaderboard() {
+            if (fakeCompetitors.length === 0) {
+                generateFakeCompetitors(pointsData.total);
+            }
             const lb = getLeaderboardData();
             let html = `<table class="leaderboard-table">
                 <thead>
