@@ -1112,6 +1112,7 @@
         let feynmanRecordingTimer = 0;
         let feynmanTimerInterval = null;
         let feynmanLastResultIndex = 0;
+        let feynmanRestartInterval = null;
 
         // Initialize Web Speech API
         if (window.SpeechRecognition || window.webkitSpeechRecognition) {
@@ -1120,6 +1121,7 @@
             feynmanRecognition.continuous = true;
             feynmanRecognition.interimResults = true;
             feynmanRecognition.lang = 'en-US';
+            feynmanRecognition.maxAlternatives = 1;
 
             feynmanRecognition.onstart = function() {
                 feynmanIsRecording = true;
@@ -1154,18 +1156,24 @@
 
             feynmanRecognition.onerror = function(event) {
                 console.error('Speech recognition error:', event.error);
-                alert('Microphone error: ' + event.error);
-                feynmanIsRecording = false;
-                document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+                if (event.error !== 'no-speech' && event.error !== 'audio-capture') {
+                    alert('Microphone error: ' + event.error);
+                    feynmanIsRecording = false;
+                    document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+                }
             };
 
             feynmanRecognition.onend = function() {
-                feynmanIsRecording = false;
-                clearInterval(feynmanTimerInterval);
-                document.getElementById('recordingTimer').style.display = 'none';
-                document.getElementById('recordBtn').textContent = '🎤 Start Recording';
-                document.getElementById('recordingSection').style.display = 'none';
-                document.getElementById('transcriptSection').style.display = 'block';
+                if (feynmanIsRecording) {
+                    feynmanRecognition.start();
+                } else {
+                    clearInterval(feynmanTimerInterval);
+                    clearInterval(feynmanRestartInterval);
+                    document.getElementById('recordingTimer').style.display = 'none';
+                    document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+                    document.getElementById('recordingSection').style.display = 'none';
+                    document.getElementById('transcriptSection').style.display = 'block';
+                }
             };
         }
 
@@ -2214,8 +2222,10 @@ Keep descriptions under 15 words. Return only the JSON array.`;
                 return;
             }
             if (feynmanIsRecording) {
+                feynmanIsRecording = false;
                 feynmanRecognition.stop();
             } else {
+                feynmanIsRecording = true;
                 feynmanTranscript = '';
                 feynmanLastResultIndex = 0;
                 document.getElementById('feynmanTranscript').value = '';
