@@ -31,7 +31,13 @@
 
         body {
             font-family: 'Arial Black', 'Impact', sans-serif;
-            background: linear-gradient(135deg, #90EE90 0%, #C8FFC8 100%);
+            background-color: #90EE90;
+            background-image:
+                radial-gradient(circle, rgba(0,0,0,0.12) 2px, transparent 2px),
+                linear-gradient(135deg, #90EE90 0%, #C8FFC8 100%);
+            background-size: 16px 16px, 100% 100%;
+            background-position: 0 0, 0 0;
+            background-attachment: scroll;
             min-height: 100vh;
             color: #000;
             padding: 8px;
@@ -44,7 +50,11 @@
         }
 
         header {
-            background: linear-gradient(135deg, #90EE90 0%, #5FD75F 100%);
+            background-color: #90EE90;
+            background-image:
+                radial-gradient(circle, rgba(0,0,0,0.08) 1.5px, transparent 1.5px),
+                linear-gradient(135deg, #90EE90 0%, #5FD75F 100%);
+            background-size: 14px 14px, 100% 100%;
             padding: 30px;
             border-radius: 2px;
             margin-bottom: 30px;
@@ -141,7 +151,9 @@
         }
 
         .sidebar {
-            background: #90EE90;
+            background-color: #90EE90;
+            background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1.5px, transparent 1.5px);
+            background-size: 14px 14px;
             padding: 24px;
             border-radius: 2px;
             height: fit-content;
@@ -308,7 +320,9 @@
         }
 
         .modal-content {
-            background: #90EE90;
+            background-color: #90EE90;
+            background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1.5px, transparent 1.5px);
+            background-size: 14px 14px;
             padding: 32px;
             border-radius: 2px;
             max-width: 600px;
