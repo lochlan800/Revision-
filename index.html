@@ -1105,6 +1105,35 @@
         let flashcardSessionReviewed = new Set();  // track which cards rated this session
         let isShuffled = false;
 
+        // ── Pomodoro Timer ───────────────────────────────────────────────────────
+        let pomodoroTimer = null;
+        let pomodoroIsRunning = false;
+        let pomodoroTimeLeft = 25 * 60;
+        let pomodoroMode = 'work';
+        let pomodoroSessionCount = 0;
+        const POMODORO_WORK_TIME = 25 * 60;
+        const POMODORO_BREAK_TIME = 5 * 60;
+
+        function savePomodoroState() {
+            localStorage.setItem('pomodoroState', JSON.stringify({
+                timeLeft: pomodoroTimeLeft,
+                isRunning: pomodoroIsRunning,
+                mode: pomodoroMode,
+                sessionCount: pomodoroSessionCount,
+                lastSaved: Date.now()
+            }));
+        }
+
+        function loadPomodoroState() {
+            const saved = localStorage.getItem('pomodoroState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                pomodoroTimeLeft = state.timeLeft;
+                pomodoroMode = state.mode;
+                pomodoroSessionCount = state.sessionCount;
+            }
+        }
+
         // ── Feynman Technique ────────────────────────────────────────────────────
         let feynmanRecognition = null;
         let feynmanIsRecording = false;
@@ -2346,6 +2375,108 @@ TIPS TO IMPROVE:
             }
         }
 
+        // Pomodoro Timer Functions
+        function togglePomodoro() {
+            if (pomodoroIsRunning) {
+                pausePomodoro();
+            } else {
+                startPomodoro();
+            }
+        }
+
+        function startPomodoro() {
+            pomodoroIsRunning = true;
+            document.querySelector('#pomodoroWidget button:first-child').textContent = '⏸️';
+
+            pomodoroTimer = setInterval(() => {
+                pomodoroTimeLeft--;
+                updatePomodoroDisplay();
+                savePomodoroState();
+
+                if (pomodoroTimeLeft <= 0) {
+                    completePomodoro();
+                }
+            }, 1000);
+        }
+
+        function pausePomodoro() {
+            pomodoroIsRunning = false;
+            clearInterval(pomodoroTimer);
+            document.querySelector('#pomodoroWidget button:first-child').textContent = '▶️';
+            savePomodoroState();
+        }
+
+        function resetPomodoro() {
+            pausePomodoro();
+            pomodoroMode = 'work';
+            pomodoroTimeLeft = POMODORO_WORK_TIME;
+            updatePomodoroDisplay();
+            savePomodoroState();
+        }
+
+        function completePomodoro() {
+            pausePomodoro();
+            playNotificationSound();
+
+            if (pomodoroMode === 'work') {
+                pomodoroSessionCount++;
+                pomodoroMode = 'break';
+                pomodoroTimeLeft = POMODORO_BREAK_TIME;
+                alert(`🎉 Work session complete! ${pomodoroSessionCount} pomodoro(s) done. Take a 5-minute break.`);
+            } else {
+                pomodoroMode = 'work';
+                pomodoroTimeLeft = POMODORO_WORK_TIME;
+                alert('✨ Break over! Ready for another work session?');
+            }
+            updatePomodoroDisplay();
+            savePomodoroState();
+        }
+
+        function updatePomodoroDisplay() {
+            const mins = Math.floor(pomodoroTimeLeft / 60);
+            const secs = pomodoroTimeLeft % 60;
+            document.getElementById('pomodoroTime').textContent =
+                String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            document.getElementById('pomodoroLabel').textContent =
+                pomodoroMode === 'work' ? 'WORK' : 'BREAK';
+
+            const display = document.getElementById('pomodoroDisplay');
+            if (pomodoroMode === 'break') {
+                display.style.background = '#00CFFF';
+                display.style.color = '#000';
+            } else {
+                display.style.background = '#90EE90';
+                display.style.color = '#000';
+            }
+        }
+
+        function togglePomodoroMinimize() {
+            const controls = document.getElementById('pomodoroControls');
+            if (controls.style.display === 'none') {
+                controls.style.display = 'flex';
+            } else {
+                controls.style.display = 'none';
+            }
+        }
+
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Audio notification not available');
+            }
+        }
+
         // Mind Map Functions
         function loadMindMaps() {
             document.getElementById('mindmapMain').value = '';
@@ -2909,6 +3040,8 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
         // Initialization
         loadData();
         loadPoints();
+        loadPomodoroState();
+        updatePomodoroDisplay();
         renderPointsBar();
         generateFakeCompetitors(pointsData.total);
         renderTopics();
@@ -2923,5 +3056,22 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
             });
         });
     </script>
+
+    <!-- Pomodoro Timer Widget -->
+    <div id="pomodoroWidget" style="position:fixed; bottom:20px; right:20px; z-index:9999; font-family:'Arial Black',Impact,sans-serif;">
+        <div id="pomodoroDisplay" style="
+            width:120px; height:120px; background:#90EE90; border:3px solid #000; border-radius:50%;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            box-shadow:6px 6px 0 #000; cursor:pointer; transition:all 0.2s;
+        " onclick="togglePomodoroMinimize()">
+            <div id="pomodoroTime" style="font-size:28px; font-weight:bold; line-height:1; color:#000;">25:00</div>
+            <div id="pomodoroLabel" style="font-size:10px; font-weight:bold; color:#000; margin-top:4px;">WORK</div>
+        </div>
+        <div id="pomodoroControls" style="margin-top:8px; display:flex; gap:4px; justify-content:center;">
+            <button onclick="togglePomodoro()" style="background:#FF3366; border:2px solid #000; color:#fff; font-weight:bold; padding:4px 8px; cursor:pointer; border-radius:2px; font-size:12px;">▶️</button>
+            <button onclick="resetPomodoro()" style="background:#00CFFF; border:2px solid #000; color:#000; font-weight:bold; padding:4px 8px; cursor:pointer; border-radius:2px; font-size:12px;">🔄</button>
+        </div>
+    </div>
+
 </body>
 </html>
