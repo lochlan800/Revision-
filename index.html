@@ -650,6 +650,43 @@
             from { transform: translateY(16px); opacity: 0; }
             to   { transform: translateY(0);    opacity: 1; }
         }
+
+        /* Leaderboard */
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        .leaderboard-table th {
+            background: linear-gradient(135deg, #1a2332, #111827);
+            color: #c9d1d9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+            border-bottom: 2px solid #2a3a4a;
+            font-size: 13px;
+        }
+        .leaderboard-table td {
+            padding: 12px;
+            border-bottom: 1px solid #2a3a4a;
+            color: #c9d1d9;
+            font-size: 14px;
+        }
+        .leaderboard-table tr:hover { background: rgba(74, 144, 217, 0.05); }
+        .leaderboard-table tr.player-row {
+            background: linear-gradient(90deg, rgba(240, 192, 64, 0.1), rgba(74, 144, 217, 0.08));
+            border: 1px solid rgba(240, 192, 64, 0.3);
+            font-weight: 600;
+        }
+        .leaderboard-table tr.player-row td { color: #f0c040; }
+        .leaderboard-rank { font-weight: 700; color: #8b949e; min-width: 40px; }
+        .leaderboard-rank.top1 { color: #fbbf24; font-size: 16px; }
+        .leaderboard-rank.top2 { color: #d1d5db; font-size: 16px; }
+        .leaderboard-rank.top3 { color: #f97316; font-size: 16px; }
+        .leaderboard-name { font-weight: 500; }
+        .leaderboard-points { color: #34d399; font-weight: 600; text-align: right; min-width: 80px; }
+        .leaderboard-streak { color: #fb923c; font-weight: 500; text-align: center; min-width: 60px; }
+        .leaderboard-timestamp { font-size: 12px; color: #6b7280; margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -669,6 +706,7 @@
                 <small style="color: #6b7280; flex: 1;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--primary); text-decoration: none;">console.anthropic.com</a></small>
             </div>
             <div class="points-bar">
+                <button onclick="renderLeaderboard(); openModal('leaderboardModal')" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; border: none; border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;">🏆 Leaderboard</button>
                 <span class="level-badge" id="levelBadge">Level 1 • Rookie</span>
                 <span class="points-total" id="pointsTotal">⭐ 0 pts</span>
                 <span class="streak-display" id="streakDisplay">🔥 0 day streak</span>
@@ -912,6 +950,18 @@
         </div>
     </div>
 
+    <!-- Leaderboard Modal -->
+    <div class="modal" id="leaderboardModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" onclick="closeModal('leaderboardModal')">✕</button>
+            <h2 style="margin-bottom: 20px;">🏆 Global Leaderboard</h2>
+            <div id="leaderboardContainer">
+                <p style="text-align: center; color: #6b7280;">Loading rankings...</p>
+            </div>
+            <div class="leaderboard-timestamp" id="leaderboardTimestamp"></div>
+        </div>
+    </div>
+
     <script>
         let currentSubject = 'geography';
         let currentTopic = null;
@@ -991,12 +1041,108 @@
             savePoints();
             renderPointsBar();
             showPointsToast(amount, reason);
+            updateLeaderboardOnPointsGain();
             if (newLevel > prevLevel) {
                 const info = getLevelInfo(pointsData.total);
                 setTimeout(() => alert(`🎉 Level Up! You reached Level ${info.level}: ${info.name}!`), 300);
             }
         }
         // ── End Points System ──────────────────────────────────────────────────
+
+        // ── Leaderboard System ─────────────────────────────────────────────────
+        const FAKE_NAMES = [
+            "Alex Chen", "Morgan Riley", "Jordan West", "Casey Blake", "Riley Cross",
+            "Taylor Grant", "Morgan Hayes", "Phoenix Stone", "Dakota Mills", "River Cole",
+            "Skyler Brooks", "Avery Quinn", "Casey Morgan", "Quinn Reed", "Jamie Scott",
+            "Parker Davis", "Rowan Kelly", "Adrian Stone", "Blake Turner", "Hunter Wells",
+            "Cameron Fox", "Parker Young", "Sage Adams", "Dakota Taylor", "River Morgan",
+            "Finley Woods", "Reese Cooper", "Mason Knight", "Logan Price", "Scout Miller",
+        ];
+
+        let leaderboardData = null;
+        let fakeCompetitors = [];
+
+        function generateFakeCompetitors(userTotal) {
+            fakeCompetitors = [];
+            const shuffledNames = [...FAKE_NAMES].sort(() => 0.5 - Math.random());
+
+            for (let i = 0; i < 19; i++) {
+                const rand = Math.random();
+                let scoreMultiplier;
+                if (rand < 0.3) scoreMultiplier = 1.1 + Math.random() * 0.4;        // 1.1-1.5x
+                else if (rand < 0.7) scoreMultiplier = 1.5 + Math.random() * 1;    // 1.5-2.5x
+                else scoreMultiplier = 2.5 + Math.random() * 1.5;                   // 2.5-4x
+
+                const score = Math.round(userTotal * scoreMultiplier);
+                const streak = Math.floor(Math.random() * 21);
+
+                fakeCompetitors.push({
+                    name: shuffledNames[i],
+                    score: score,
+                    streak: streak,
+                    isPlayer: false
+                });
+            }
+
+            fakeCompetitors.sort((a, b) => b.score - a.score);
+        }
+
+        function getLeaderboardData() {
+            const playerEntry = {
+                name: "TrackRunner",
+                score: pointsData.total,
+                streak: pointsData.streak,
+                isPlayer: true
+            };
+
+            const allEntries = [...fakeCompetitors, playerEntry];
+            allEntries.sort((a, b) => b.score - a.score);
+
+            return allEntries.map((entry, idx) => ({
+                ...entry,
+                rank: idx + 1
+            }));
+        }
+
+        function renderLeaderboard() {
+            const lb = getLeaderboardData();
+            let html = `<table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">Rank</th>
+                        <th>Name</th>
+                        <th style="text-align: right;">Points</th>
+                        <th style="text-align: center;">Streak</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            lb.forEach(entry => {
+                const medalEmoji = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : '';
+                const rowClass = entry.isPlayer ? 'player-row' : '';
+                const rankClass = entry.rank === 1 ? 'top1' : entry.rank === 2 ? 'top2' : entry.rank === 3 ? 'top3' : '';
+
+                html += `<tr class="${rowClass}">
+                    <td class="leaderboard-rank ${rankClass}">${medalEmoji} #${entry.rank}</td>
+                    <td class="leaderboard-name">${entry.name}${entry.isPlayer ? ' 👑' : ''}</td>
+                    <td class="leaderboard-points">${entry.score.toLocaleString()}</td>
+                    <td class="leaderboard-streak">🔥 ${entry.streak}</td>
+                </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            document.getElementById('leaderboardContainer').innerHTML = html;
+            document.getElementById('leaderboardTimestamp').textContent = 'Last updated: just now';
+        }
+
+        function updateLeaderboardOnPointsGain() {
+            generateFakeCompetitors(pointsData.total);
+            const modal = document.getElementById('leaderboardModal');
+            if (modal && modal.classList.contains('active')) {
+                renderLeaderboard();
+            }
+        }
+        // ── End Leaderboard System ─────────────────────────────────────────────
 
         const data = {
             geography: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
@@ -2245,6 +2391,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
         loadData();
         loadPoints();
         renderPointsBar();
+        generateFakeCompetitors(pointsData.total);
         renderTopics();
         renderContent();
 
