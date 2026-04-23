@@ -2552,7 +2552,9 @@ Speak like a friendly human coach — warm, energetic, and direct.`;
         function toggleCoach() {
             coachIsOpen = !coachIsOpen;
             const panel = document.getElementById('coachPanel');
+            const btn = document.getElementById('coachBtn');
             panel.style.display = coachIsOpen ? 'flex' : 'none';
+            btn.style.display = coachIsOpen ? 'none' : 'flex';
             if (coachIsOpen && coachHistory.length === 0) {
                 appendCoachMessage('assistant', "Hey! 👋 I'm your AI study coach. Ask me anything, get your daily study plan, find your weak spots, or just need a boost — I'm here!");
             }
