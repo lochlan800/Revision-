@@ -490,7 +490,7 @@
 
         .curriculum-status.no-content {
             background: rgba(139, 148, 158, 0.15);
-            color: #8b949e;
+            color: #000;
             border: 1px solid #2a3a4a;
         }
 
@@ -654,7 +654,7 @@
 
         .stat-label {
             font-size: 12px;
-            color: #6b7280;
+            color: #000;
             margin-top: 5px;
         }
 
@@ -716,7 +716,7 @@
         .points-total { font-size: 15px; font-weight: 900; color: #FF3366; white-space: nowrap; }
         .streak-display { font-size: 14px; font-weight: 900; color: #FF6B00; white-space: nowrap; }
         .points-progress-wrap { flex: 1; min-width: 120px; }
-        .points-progress-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+        .points-progress-label { font-size: 11px; color: #000; margin-bottom: 4px; }
         .points-progress-bar { height: 7px; background: #000; border-radius: 2px; overflow: hidden; border: 2px solid #000; }
         .points-progress-fill {
             height: 100%;
@@ -798,7 +798,7 @@
             <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
                 <label for="apiKeyInput" style="margin: 0; font-weight: 600; color: #c9d1d9;">Claude API Key:</label>
                 <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex: 1; max-width: 300px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #c9d1d9;">
-                <small style="color: #6b7280; flex: 1;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--primary); text-decoration: none;">console.anthropic.com</a></small>
+                <small style="color: #000; flex: 1;">Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--primary); text-decoration: none;">console.anthropic.com</a></small>
             </div>
             <div class="points-bar">
                 <button onclick="renderLeaderboard(); openModal('leaderboardModal')" style="background: linear-gradient(135deg, #f97316, #ea580c); color: white; border: none; border-radius: 20px; padding: 6px 14px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;">🏆 Leaderboard</button>
@@ -993,7 +993,7 @@
             <div style="font-size: 48px; margin-bottom: 20px; animation: spin 1s linear infinite;">⚙️</div>
             <h2>Generating Study Materials</h2>
             <p id="loadingMessage">Creating flashcards, quizzes, notes, and more based on your topic...</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">This may take 30-60 seconds</p>
+            <p style="color: #000; font-size: 12px; margin-top: 20px;">This may take 30-60 seconds</p>
         </div>
     </div>
 
@@ -1012,7 +1012,7 @@
                 My Curriculum
                 <span id="curriculumStatusBadge" class="curriculum-status no-content">No content</span>
             </h2>
-            <p style="color: #8b949e; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
+            <p style="color: #000; margin-bottom: 16px; font-size: 14px; line-height: 1.6;">
                 Paste your class notes, textbook excerpts, or syllabus bullet points below.
                 When you generate study materials, Claude will draw <strong style="color: #c9d1d9;">only</strong>
                 from this text — no outside knowledge added.
@@ -1020,7 +1020,7 @@
             <div class="form-group">
                 <label for="curriculumText" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Your source material</span>
-                    <span id="curriculumCharCount" style="font-size: 12px; color: #6b7280;">0 characters</span>
+                    <span id="curriculumCharCount" style="font-size: 12px; color: #000;">0 characters</span>
                 </label>
                 <textarea
                     id="curriculumText"
@@ -1038,8 +1038,8 @@
                 <button class="btn btn-secondary" onclick="clearCurriculum()">Clear</button>
                 <button class="btn btn-secondary" onclick="closeModal('curriculumModal')">Cancel</button>
             </div>
-            <p id="pptxStatus" style="margin-top: 8px; font-size: 13px; color: #8b949e; display: none;"></p>
-            <p style="margin-top: 16px; color: #6b7280; font-size: 12px;">
+            <p id="pptxStatus" style="margin-top: 8px; font-size: 13px; color: #000; display: none;"></p>
+            <p style="margin-top: 16px; color: #000; font-size: 12px;">
                 Tip: The more detail you paste, the more accurate your generated questions will be. You can update this at any time.
             </p>
         </div>
@@ -1051,7 +1051,7 @@
             <button class="modal-close" onclick="closeModal('leaderboardModal')">✕</button>
             <h2 style="margin-bottom: 20px;">🏆 Global Leaderboard</h2>
             <div id="leaderboardContainer">
-                <p style="text-align: center; color: #6b7280;">Loading rankings...</p>
+                <p style="text-align: center; color: #000;">Loading rankings...</p>
             </div>
             <div class="leaderboard-timestamp" id="leaderboardTimestamp"></div>
         </div>
@@ -1664,7 +1664,7 @@ ${jsonSchema}`;
             const total = cards.length;
             const pct = total > 0 ? Math.round((reviewed / total) * 100) : 0;
             progressEl.innerHTML = `
-                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #8b949e; margin-bottom: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #000; margin-bottom: 4px;">
                     <span>Session progress</span>
                     <span>${reviewed} / ${total} rated</span>
                 </div>
@@ -1689,7 +1689,7 @@ ${jsonSchema}`;
                     <button class="btn" style="background: #f39c12; color: white; flex: 1;" onclick="rateFlashcard(${realIndex}, 'hard')">Hard</button>
                     <button class="btn" style="background: #27ae60; color: white; flex: 1;" onclick="rateFlashcard(${realIndex}, 'easy')">Easy</button>
                 </div>
-            ` : '<p style="text-align: center; color: #6b7280; font-size: 13px; margin-top: 8px;">Click card to reveal answer, then rate</p>';
+            ` : '<p style="text-align: center; color: #000; font-size: 13px; margin-top: 8px;">Click card to reveal answer, then rate</p>';
 
             container.innerHTML = `
                 <div class="card-nav">
@@ -2153,11 +2153,11 @@ ${jsonSchema}`;
                 if (attempts.length >= 2) {
                     const last = attempts[attempts.length - 1].score;
                     const prev = attempts[attempts.length - 2].score;
-                    trend = last > prev ? '<span style="color: #34d399;"> ↑</span>' : last < prev ? '<span style="color: #f87171;"> ↓</span>' : '<span style="color: #8b949e;"> →</span>';
+                    trend = last > prev ? '<span style="color: #34d399;"> ↑</span>' : last < prev ? '<span style="color: #f87171;"> ↓</span>' : '<span style="color: #000;"> →</span>';
                 }
 
                 const historyLine = attempts.length > 0
-                    ? `<div style="font-size: 12px; color: #8b949e; margin-top: 6px;">Attempts: ${attempts.length} | Best: ${bestScore}/10 | Last: ${lastAttempt.score}/10 (${lastAttempt.date})${trend}</div>`
+                    ? `<div style="font-size: 12px; color: #000; margin-top: 6px;">Attempts: ${attempts.length} | Best: ${bestScore}/10 | Last: ${lastAttempt.score}/10 (${lastAttempt.date})${trend}</div>`
                     : '';
 
                 return `
@@ -2169,7 +2169,7 @@ ${jsonSchema}`;
                         <button id="markBtn_${i}" class="btn btn-primary" style="padding: 6px 16px; font-size: 13px;" onclick="markPracticeAnswer(${i})">✏️ Mark Answer${attempts.length > 0 ? ' (Attempt ' + (attempts.length + 1) + ')' : ''}</button>
                         <details style="flex: 1; align-self: center;">
                             <summary style="cursor: pointer; color: #059669; font-size: 13px;">Show Sample Answer</summary>
-                            <p style="margin-top: 8px; white-space: pre-wrap; color: #8b949e; font-size: 13px;">${p.answer}</p>
+                            <p style="margin-top: 8px; white-space: pre-wrap; color: #000; font-size: 13px;">${p.answer}</p>
                         </details>
                         <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deletePractice(${i})">Delete</button>
                     </div>
@@ -2177,7 +2177,7 @@ ${jsonSchema}`;
                         const s = lastAttempt.score;
                         const cc = s >= 7 ? 'marking-good' : s >= 4 ? 'marking-ok' : 'marking-low';
                         return `<div class="marking-feedback ${cc}">
-                            <div class="marking-score">${s} / 10 <span style="font-size: 13px; font-weight: normal; color: #8b949e;">(${lastAttempt.date})</span></div>
+                            <div class="marking-score">${s} / 10 <span style="font-size: 13px; font-weight: normal; color: #000;">(${lastAttempt.date})</span></div>
                             <p style="margin: 8px 0;">${lastAttempt.feedback || ''}</p>
                             ${(lastAttempt.correct || []).length ? '<div style="margin-top: 8px;"><strong style="color: #34d399;">✓ Got right:</strong><ul style="margin: 4px 0 0 16px;">' + lastAttempt.correct.map(c => '<li>' + c + '</li>').join('') + '</ul></div>' : ''}
                             ${(lastAttempt.missed || []).length ? '<div style="margin-top: 8px;"><strong style="color: #f87171;">✗ Missed:</strong><ul style="margin: 4px 0 0 16px;">' + lastAttempt.missed.map(m => '<li>' + m + '</li>').join('') + '</ul></div>' : ''}
@@ -2215,7 +2215,7 @@ ${jsonSchema}`;
 
             const practice = data[currentSubject].topics[currentTopic].practices[index];
             const feedbackDiv = document.getElementById(`practiceFeedback_${index}`);
-            feedbackDiv.innerHTML = '<p style="color: #8b949e; margin-top: 10px;">⏳ Marking your answer...</p>';
+            feedbackDiv.innerHTML = '<p style="color: #000; margin-top: 10px;">⏳ Marking your answer...</p>';
 
             try {
                 const prompt = `You are a teacher marking a student's answer. Compare the student's answer to the sample answer and give feedback.
@@ -2298,7 +2298,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                     const prev = practice.attempts[practice.attempts.length - 2].score;
                     trendHTML = score > prev ? '<span style="color: #34d399; font-size: 13px; margin-left: 8px;">↑ Improved!</span>'
                         : score < prev ? '<span style="color: #f87171; font-size: 13px; margin-left: 8px;">↓ Needs work</span>'
-                        : '<span style="color: #8b949e; font-size: 13px; margin-left: 8px;">→ Same as last</span>';
+                        : '<span style="color: #000; font-size: 13px; margin-left: 8px;">→ Same as last</span>';
                 }
 
                 feedbackDiv.innerHTML = `
@@ -2375,7 +2375,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
             const cards = data[currentSubject].topics[currentTopic].flashcards || [];
 
             if (cards.length === 0) {
-                container.innerHTML = '<p style="color: #8b949e;">No flashcards to track. Create flashcards first!</p>';
+                container.innerHTML = '<p style="color: #000;">No flashcards to track. Create flashcards first!</p>';
                 return;
             }
 
@@ -2413,7 +2413,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
 
             html += `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="margin: 0; font-size: 15px; color: #8b949e;">All Cards</h3>
+                    <h3 style="margin: 0; font-size: 15px; color: #000;">All Cards</h3>
                     <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
                         <input type="checkbox" ${srShowDueOnly ? 'checked' : ''} onchange="srShowDueOnly = this.checked; loadSpacedRep();" style="width: auto;">
                         Due only
@@ -2437,7 +2437,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                             <span style="color: #c9d1d9; font-size: 14px;">${card.question.length > 60 ? card.question.substring(0, 60) + '...' : card.question}</span>
                             <span style="font-size: 11px; color: ${statusColor}; white-space: nowrap; margin-left: 10px;">${due ? 'DUE' : 'Next: ' + rep.nextReview}</span>
                         </div>
-                        <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+                        <div style="font-size: 11px; color: #000; margin-top: 4px;">
                             Reviews: ${rep.reviewCount} | Interval: ${intervalText} | Ease: ${rep.easeFactor.toFixed(1)}
                         </div>
                     </div>
@@ -2475,7 +2475,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
             const isFlipped = container.dataset.flipped === 'true';
 
             container.innerHTML = `
-                <div style="text-align: center; color: #8b949e; font-size: 13px; margin-bottom: 10px;">
+                <div style="text-align: center; color: #000; font-size: 13px; margin-bottom: 10px;">
                     Card ${srReviewIndex + 1} of ${srReviewQueue.length}
                 </div>
                 <div style="width: 100%; height: 4px; background: #2a3a4a; border-radius: 2px; margin-bottom: 16px; overflow: hidden;">
@@ -2488,7 +2488,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                     </div>
                 </div>
                 ${isFlipped ? `
-                    <p style="text-align: center; color: #8b949e; font-size: 13px; margin: 10px 0 6px;">How well did you know this?</p>
+                    <p style="text-align: center; color: #000; font-size: 13px; margin: 10px 0 6px;">How well did you know this?</p>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn" style="flex: 1; background: #e74c3c; color: white; padding: 10px;" onclick="rateReviewCard(1)">
                             Again<br><small style="opacity: 0.8;">1 day</small>
@@ -2503,7 +2503,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                             Easy<br><small style="opacity: 0.8;">${Math.round(sr.interval * sr.easeFactor * 1.3)}d</small>
                         </button>
                     </div>
-                ` : '<p style="text-align: center; color: #6b7280; font-size: 13px; margin-top: 8px;">Click card to reveal answer</p>'}
+                ` : '<p style="text-align: center; color: #000; font-size: 13px; margin-top: 8px;">Click card to reveal answer</p>'}
                 <button class="btn btn-secondary" style="margin-top: 12px; width: 100%;" onclick="loadSpacedRep()">Exit Session</button>
             `;
         }
