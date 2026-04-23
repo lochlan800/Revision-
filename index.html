@@ -913,6 +913,19 @@
     </div>
 
     <!-- Notes Modal -->
+    <!-- Resources Modal -->
+    <div class="modal" id="resourcesModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('resourcesModal')">✕</button>
+            <h2>📺 Resources</h2>
+            <p id="resourcesTopicLabel" style="font-weight:bold; margin-bottom:12px;"></p>
+            <div id="resourcesList"></div>
+            <button class="btn btn-primary" onclick="generateResources()" id="generateResourcesBtn" style="margin-top:16px;">
+                🤖 Generate Resources
+            </button>
+        </div>
+    </div>
+
     <div class="modal" id="notesModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('notesModal')">✕</button>
@@ -1607,6 +1620,12 @@ ${jsonSchema}`;
                     <h2>Quiz Builder</h2>
                     <p>Create multiple choice quizzes.</p>
                 </div>
+
+                <div class="strategy-card" onclick="openModal('resourcesModal'); loadResources()">
+                    <div class="icon">📺</div>
+                    <h2>Resources</h2>
+                    <p>Links to videos and websites for this topic.</p>
+                </div>
             `;
         }
 
@@ -1976,6 +1995,93 @@ ${jsonSchema}`;
                 data[currentSubject].topics[currentTopic].notes.splice(index, 1);
                 saveData();
                 renderNotesList();
+            }
+        }
+
+        // Resources Functions
+        function loadResources() {
+            const topicData = data[currentSubject].topics[currentTopic];
+            document.getElementById('resourcesTopicLabel').textContent = 'Topic: ' + currentTopic;
+            renderResourcesList(topicData.resources || []);
+        }
+
+        function renderResourcesList(resources) {
+            const container = document.getElementById('resourcesList');
+            if (!resources.length) {
+                container.innerHTML = '<p style="color:#000; font-weight:bold;">No resources yet. Click "Generate Resources" to get links!</p>';
+                return;
+            }
+            container.innerHTML = resources.map((r, i) => `
+                <div style="background:#90EE90; border:3px solid #000; border-radius:4px; padding:12px; margin-bottom:10px; box-shadow:4px 4px 0 #000; display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:1.05em; font-weight:bold; font-family:'Arial Black',Impact,sans-serif; word-break:break-word;">
+                            ${r.type === 'youtube' ? '▶️' : '🌐'} <a href="${r.url}" target="_blank" rel="noopener noreferrer" style="color:#000; text-decoration:underline;">${r.title}</a>
+                        </div>
+                        <div style="color:#000; margin-top:4px; font-size:0.9em;">${r.description}</div>
+                    </div>
+                    <button onclick="deleteResource(${i})" style="background:#FF3366; border:2px solid #000; border-radius:2px; color:#fff; font-weight:bold; padding:4px 8px; cursor:pointer; margin-left:10px; flex-shrink:0;">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteResource(index) {
+            data[currentSubject].topics[currentTopic].resources.splice(index, 1);
+            saveData();
+            loadResources();
+        }
+
+        async function generateResources() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) { alert('Please enter your API key first!'); return; }
+            const btn = document.getElementById('generateResourcesBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            const prompt = `You are a helpful study assistant. Generate 6-8 learning resources for a student studying "${currentTopic}" in ${currentSubject}.
+
+Return ONLY a JSON array (no extra text) with this exact format:
+[
+  { "title": "...", "url": "...", "type": "youtube", "description": "Short description under 15 words" },
+  { "title": "...", "url": "...", "type": "website", "description": "Short description under 15 words" }
+]
+
+Include a mix of:
+- 3-4 YouTube search URLs (format: https://www.youtube.com/results?search_query=topic+keywords) or direct Crash Course / Khan Academy / TED-Ed video links if you know specific ones
+- 3-4 websites like BBC Bitesize, Khan Academy, Wikipedia, Britannica, or subject-specific educational sites
+
+Keep descriptions under 15 words. Return only the JSON array.`;
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-haiku-4-5-20251001',
+                        max_tokens: 1500,
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error?.message || 'API error');
+                const text = result.content[0].text;
+                const jsonMatch = text.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) throw new Error('Invalid response format');
+                const resources = JSON.parse(jsonMatch[0]);
+                if (!data[currentSubject].topics[currentTopic].resources) {
+                    data[currentSubject].topics[currentTopic].resources = [];
+                }
+                data[currentSubject].topics[currentTopic].resources.push(...resources);
+                saveData();
+                addPoints(10, 'Resources generated');
+                loadResources();
+            } catch (err) {
+                alert('Failed to generate resources. Check your API key and try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🤖 Generate Resources';
             }
         }
 
