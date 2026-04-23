@@ -926,6 +926,35 @@
         </div>
     </div>
 
+    <!-- Feynman Technique Modal -->
+    <div class="modal" id="feynmanModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <button class="modal-close" onclick="closeModal('feynmanModal')">✕</button>
+            <h2>🎤 Feynman Technique</h2>
+            <p id="feynmanTopic" style="font-weight:bold; margin-bottom:16px;"></p>
+
+            <!-- Recording Section -->
+            <div id="recordingSection" style="background:#90EE90; border:3px solid #000; border-radius:4px; padding:16px; margin-bottom:16px; text-align:center; box-shadow:4px 4px 0 #000;">
+                <div id="recordingTimer" style="font-size:1.5em; font-weight:bold; margin-bottom:12px; display:none;">00:00</div>
+                <button id="recordBtn" class="btn btn-primary" style="width:100%; padding:12px; font-size:1.1em;" onclick="toggleRecording()">🎤 Start Recording</button>
+                <p style="color:#000; font-size:0.85em; margin-top:8px; font-weight:bold;">Speak clearly. Explain as if teaching a friend.</p>
+            </div>
+
+            <!-- Transcript Section -->
+            <div id="transcriptSection" style="display:none;">
+                <label style="display:block; font-weight:bold; margin-bottom:8px;">Your Explanation (Transcribed):</label>
+                <textarea id="feynmanTranscript" style="width:100%; min-height:120px; padding:8px; border:2px solid #000; border-radius:2px; font-family:Arial,sans-serif; font-size:0.95em;" placeholder="Transcript will appear here..."></textarea>
+                <button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="evaluateFeynmanExplanation()">✅ Evaluate My Explanation</button>
+            </div>
+
+            <!-- Feedback Section -->
+            <div id="feedbackSection" style="display:none;">
+                <div id="feynmanFeedback" style="margin-top:16px;"></div>
+                <button class="btn btn-secondary" style="margin-top:12px; width:100%;" onclick="resetFeynmanRecorder()">🎤 Try Again</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="notesModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('notesModal')">✕</button>
@@ -1074,6 +1103,65 @@
         let flashcardOrder = [];       // indices into flashcards array (shuffled or sequential)
         let flashcardSessionReviewed = new Set();  // track which cards rated this session
         let isShuffled = false;
+
+        // ── Feynman Technique ────────────────────────────────────────────────────
+        let feynmanRecognition = null;
+        let feynmanIsRecording = false;
+        let feynmanTranscript = '';
+        let feynmanRecordingTimer = 0;
+        let feynmanTimerInterval = null;
+
+        // Initialize Web Speech API
+        if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            feynmanRecognition = new SpeechRecognition();
+            feynmanRecognition.continuous = true;
+            feynmanRecognition.interimResults = true;
+            feynmanRecognition.lang = 'en-US';
+
+            feynmanRecognition.onstart = function() {
+                feynmanIsRecording = true;
+                document.getElementById('recordBtn').textContent = '⏹️ Stop Recording';
+                document.getElementById('recordingTimer').style.display = 'block';
+                feynmanRecordingTimer = 0;
+                feynmanTimerInterval = setInterval(() => {
+                    feynmanRecordingTimer++;
+                    const mins = Math.floor(feynmanRecordingTimer / 60);
+                    const secs = feynmanRecordingTimer % 60;
+                    document.getElementById('recordingTimer').textContent =
+                        String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                }, 1000);
+            };
+
+            feynmanRecognition.onresult = function(event) {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        feynmanTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                document.getElementById('feynmanTranscript').value = feynmanTranscript + interimTranscript;
+            };
+
+            feynmanRecognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                alert('Microphone error: ' + event.error);
+                feynmanIsRecording = false;
+                document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+            };
+
+            feynmanRecognition.onend = function() {
+                feynmanIsRecording = false;
+                clearInterval(feynmanTimerInterval);
+                document.getElementById('recordingTimer').style.display = 'none';
+                document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+                document.getElementById('recordingSection').style.display = 'none';
+                document.getElementById('transcriptSection').style.display = 'block';
+            };
+        }
 
         // ── Points System ─────────────────────────────────────────────────────
         let pointsData = { total: 0, streak: 0, lastActiveDate: null };
@@ -1626,6 +1714,12 @@ ${jsonSchema}`;
                     <h2>Resources</h2>
                     <p>Links to videos and websites for this topic.</p>
                 </div>
+
+                <div class="strategy-card" onclick="openModal('feynmanModal'); loadFeynman()">
+                    <div class="icon">🎤</div>
+                    <h2>Feynman Technique</h2>
+                    <p>Explain the topic as if teaching someone. Get AI feedback.</p>
+                </div>
             `;
         }
 
@@ -2096,6 +2190,137 @@ Keep descriptions under 15 words. Return only the JSON array.`;
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🤖 Generate Resources';
+            }
+        }
+
+        // Feynman Technique Functions
+        function loadFeynman() {
+            document.getElementById('feynmanTopic').textContent = 'Topic: ' + currentTopic;
+            document.getElementById('recordingSection').style.display = 'block';
+            document.getElementById('transcriptSection').style.display = 'none';
+            document.getElementById('feedbackSection').style.display = 'none';
+            resetFeynmanRecorder();
+        }
+
+        function toggleRecording() {
+            if (!feynmanRecognition) {
+                alert('Web Speech API not supported in your browser. Try Chrome, Edge, or Safari.');
+                return;
+            }
+            if (feynmanIsRecording) {
+                feynmanRecognition.stop();
+            } else {
+                feynmanTranscript = '';
+                document.getElementById('feynmanTranscript').value = '';
+                feynmanRecognition.start();
+            }
+        }
+
+        async function evaluateFeynmanExplanation() {
+            const transcript = document.getElementById('feynmanTranscript').value.trim();
+            if (!transcript) {
+                alert('Please record an explanation first.');
+                return;
+            }
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                alert('Please enter your API key first.');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Evaluating...';
+
+            const topicData = data[currentSubject].topics[currentTopic];
+            const hasContent = (topicData.flashcards || []).length > 0 || (topicData.practices || []).length > 0;
+
+            const prompt = `You are an expert tutor using the Feynman Technique to evaluate student explanations.
+
+STUDENT'S EXPLANATION:
+---
+${transcript}
+---
+
+TOPIC: "${currentTopic}" in ${currentSubject}
+${hasContent ? `REFERENCE MATERIALS (for comparison):
+- Flashcards: ${(topicData.flashcards || []).map(f => f.question).join('; ').substring(0, 500)}...` : '(No reference materials available)'}
+
+EVALUATE THE STUDENT'S EXPLANATION:
+1. Did they understand the core concepts?
+2. Are there any misconceptions or errors?
+3. What key points or details did they miss?
+4. How clear and complete is their explanation?
+
+Return your feedback in this format (no markdown, just plain text):
+
+SCORE: [1-10 out of 10, how well they explained it]
+
+WHAT YOU GOT RIGHT:
+- [bullet point of correct concept or explanation]
+- [repeat for each correct point, max 3]
+
+WHAT'S MISSING:
+- [key concept or detail not mentioned]
+- [repeat for gaps, max 3]
+
+TIPS TO IMPROVE:
+- [actionable suggestion]
+- [repeat, max 2]`;
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-haiku-4-5-20251001',
+                        max_tokens: 800,
+                        messages: [{ role: 'user', content: prompt }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.json().catch(() => ({}));
+                    throw new Error(errBody.error?.message || `API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const feedback = result.content?.[0]?.text;
+                if (!feedback) throw new Error('No feedback returned');
+
+                const feedbackDiv = document.getElementById('feynmanFeedback');
+                feedbackDiv.innerHTML = `
+                    <div style="background:#FFE94E; border:3px solid #000; border-radius:4px; padding:16px; box-shadow:4px 4px 0 #000; font-family:Arial,sans-serif; font-size:0.95em; line-height:1.6; color:#000; white-space:pre-wrap; word-wrap:break-word;">
+                        ${feedback.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </div>
+                `;
+
+                document.getElementById('transcriptSection').style.display = 'none';
+                document.getElementById('feedbackSection').style.display = 'block';
+                addPoints(15, 'Feynman explanation evaluated');
+            } catch (err) {
+                console.error('evaluateFeynmanExplanation error:', err);
+                alert('Failed to evaluate explanation.\n\n' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✅ Evaluate My Explanation';
+            }
+        }
+
+        function resetFeynmanRecorder() {
+            feynmanTranscript = '';
+            document.getElementById('feynmanTranscript').value = '';
+            document.getElementById('recordBtn').textContent = '🎤 Start Recording';
+            document.getElementById('recordingSection').style.display = 'block';
+            document.getElementById('transcriptSection').style.display = 'none';
+            document.getElementById('feedbackSection').style.display = 'none';
+            if (feynmanIsRecording) {
+                feynmanRecognition.stop();
             }
         }
 
