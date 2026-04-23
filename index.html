@@ -2578,7 +2578,13 @@ Speak like a friendly human coach — warm, energetic, and direct.`;
             const text = input.value.trim();
             if (!text) return;
             const apiKey = document.getElementById('apiKeyInput').value.trim();
-            if (!apiKey) { alert('Please enter your API key first.'); return; }
+            if (!apiKey) {
+                appendCoachMessage('assistant', '⚠️ Please enter your Claude API key in the box at the top of the page first!');
+                return;
+            }
+
+            const sendBtn = document.querySelector('#coachPanel button[onclick="sendCoachMessage()"]');
+            if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '⏳'; }
 
             input.value = '';
             appendCoachMessage('user', text);
@@ -2619,7 +2625,10 @@ Speak like a friendly human coach — warm, energetic, and direct.`;
                 appendCoachMessage('assistant', reply);
             } catch (err) {
                 document.getElementById('coachThinking')?.remove();
-                appendCoachMessage('assistant', 'Sorry, I had trouble responding. Check your API key.\n\n' + err.message);
+                appendCoachMessage('assistant', '❌ Error: ' + err.message);
+            } finally {
+                const sendBtn = document.querySelector('#coachPanel button[onclick="sendCoachMessage()"]');
+                if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '▶'; }
             }
         }
 
