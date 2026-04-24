@@ -1418,10 +1418,10 @@
         // ── End Leaderboard System ─────────────────────────────────────────────
 
         const data = {
-            geography: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
-            history: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
-            re: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} },
-            science: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {} }
+            geography: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {}, exams: [] },
+            history: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {}, exams: [] },
+            re: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {}, exams: [] },
+            science: { topics: {}, flashcards: {}, quizzes: {}, notes: {}, mindmaps: {}, practices: {}, spacedRep: {}, exams: [] }
         };
 
         function saveData() {
@@ -3155,7 +3155,28 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                 </div>
             `;
 
-            html += `<button class="btn" onclick="showRevisionSchedule()" style="margin-bottom: 12px; width: 100%; background: #00CFFF; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 #000; font-weight: bold;">📅 View Revision Schedule</button>`;
+            // Show upcoming exams for this subject
+            const exams = data[currentSubject].exams || [];
+            const todayDate = new Date(getToday() + 'T00:00:00');
+            const upcomingExams = exams.filter(e => new Date(e.date + 'T00:00:00') >= todayDate).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (upcomingExams.length > 0) {
+                html += `<div style="background:#fff0f3;border:3px solid #FF3366;border-radius:6px;padding:10px;margin-bottom:12px;box-shadow:4px 4px 0 #000;">
+                    <div style="font-family:Impact,Arial Black,sans-serif;font-size:13px;color:#000;letter-spacing:1px;margin-bottom:6px;">📝 UPCOMING TESTS</div>`;
+                upcomingExams.forEach(exam => {
+                    const daysUntil = Math.ceil((new Date(exam.date + 'T00:00:00') - todayDate) / 86400000);
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px;color:#000;">
+                        <span><strong>${exam.name}</strong> in ${daysUntil} day${daysUntil!==1?'s':''}</span>
+                        <button class="btn" onclick="removeExam('${exam.date}')" style="padding:2px 6px;font-size:10px;background:#FF3366;color:#fff;border:2px solid #000;">✕</button>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            html += `<div style="display:flex;gap:8px;margin-bottom:12px;">
+                <button class="btn" onclick="showRevisionSchedule()" style="flex:1;background:#00CFFF;color:#000;border:3px solid #000;box-shadow:4px 4px 0 #000;font-weight:bold;">📅 Schedule</button>
+                <button class="btn" onclick="showAddExamModal()" style="flex:1;background:#90EE90;color:#000;border:3px solid #000;box-shadow:4px 4px 0 #000;font-weight:bold;">➕ Test Date</button>
+            </div>`;
 
             if (dueCount > 0) {
                 html += `<button class="btn btn-primary" onclick="startReviewSession()" style="margin-bottom: 16px; width: 100%;">Start Review Session (${dueCount} due)</button>`;
@@ -3202,37 +3223,53 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
         function showRevisionSchedule() {
             const container = document.getElementById('spacedRepContainer');
             const today = getToday();
-            const todayDate = new Date(today);
+            const todayDate = new Date(today + 'T00:00:00');
 
-            // Collect all upcoming reviews across every subject & topic
-            const byDate = {}; // { 'YYYY-MM-DD': [ { subject, topic, question } ] }
+            // Get current subject's exams
+            const exams = (data[currentSubject].exams || []).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            for (const subject of Object.keys(data)) {
-                const topics = data[subject].topics || {};
-                for (const topicKey of Object.keys(topics)) {
-                    const topicObj = topics[topicKey];
-                    const cards = topicObj.flashcards || [];
-                    const sr = topicObj.spacedRep || {};
-                    cards.forEach((card, i) => {
-                        const rep = sr[i];
-                        if (!rep || !rep.nextReview) return;
-                        const dateKey = rep.nextReview;
-                        if (!byDate[dateKey]) byDate[dateKey] = [];
-                        byDate[dateKey].push({
-                            subject,
-                            topic: topicObj.name || topicKey,
-                            question: card.question
-                        });
+            // Collect all reviews for current subject
+            const byDate = {}; // { 'YYYY-MM-DD': [ { topic, question } ] }
+            const topics = data[currentSubject].topics || {};
+            for (const topicKey of Object.keys(topics)) {
+                const topicObj = topics[topicKey];
+                const cards = topicObj.flashcards || [];
+                const sr = topicObj.spacedRep || {};
+                cards.forEach((card, i) => {
+                    const rep = sr[i];
+                    if (!rep || !rep.nextReview) return;
+                    const dateKey = rep.nextReview;
+                    if (!byDate[dateKey]) byDate[dateKey] = [];
+                    byDate[dateKey].push({
+                        topic: topicObj.name || topicKey,
+                        question: card.question
                     });
-                }
+                });
             }
 
             const sortedDates = Object.keys(byDate).sort();
 
+            let html = `<button class="btn" onclick="loadSpacedRep()" style="margin-bottom:14px;background:#FF3366;color:#fff;border:3px solid #000;box-shadow:4px 4px 0 #000;">← Back</button>
+                <h3 style="margin:0 0 14px;font-family:Impact,Arial Black,sans-serif;font-size:18px;color:#000;letter-spacing:1px;">📅 REVISION SCHEDULE</h3>`;
+
+            if (exams.length > 0) {
+                html += `<div style="background:#fff9e6;border:3px solid #f59e0b;border-radius:8px;padding:10px;margin-bottom:14px;box-shadow:4px 4px 0 #000;">
+                    <div style="font-family:Impact,Arial Black,sans-serif;font-size:13px;color:#000;letter-spacing:1px;margin-bottom:6px;">📝 TEST DATES</div>`;
+                exams.forEach(exam => {
+                    const d = new Date(exam.date + 'T00:00:00');
+                    const daysUntil = Math.ceil((d - todayDate) / 86400000);
+                    const daysLabel = daysUntil <= 0 ? '⚠ PAST' : daysUntil === 1 ? '🔴 TOMORROW' : daysUntil < 7 ? `🟡 ${daysUntil}d` : `🟢 ${daysUntil}d`;
+                    html += `<div style="font-size:12px;color:#000;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+                        <span><strong>${exam.name}</strong> — ${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                        <span style="font-weight:bold;">${daysLabel}</span>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
             if (sortedDates.length === 0) {
-                container.innerHTML = `
-                    <button class="btn" onclick="loadSpacedRep()" style="margin-bottom:14px;background:#FF3366;color:#fff;border:3px solid #000;box-shadow:4px 4px 0 #000;">← Back</button>
-                    <p style="text-align:center;color:#000;">No scheduled reviews yet. Start reviewing your flashcards!</p>`;
+                html += `<p style="text-align:center;color:#000;">No scheduled reviews yet. Start reviewing your flashcards!</p>`;
+                container.innerHTML = html;
                 return;
             }
 
@@ -3246,8 +3283,14 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                 return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
             }
 
-            let html = `<button class="btn" onclick="loadSpacedRep()" style="margin-bottom:14px;background:#FF3366;color:#fff;border:3px solid #000;box-shadow:4px 4px 0 #000;">← Back</button>
-                <h3 style="margin:0 0 14px;font-family:Impact,Arial Black,sans-serif;font-size:18px;color:#000;letter-spacing:1px;">📅 REVISION SCHEDULE</h3>`;
+            function getUpcomingExamForDate(dateStr) {
+                for (const exam of exams) {
+                    if (new Date(exam.date + 'T00:00:00') >= new Date(dateStr + 'T00:00:00')) {
+                        return exam;
+                    }
+                }
+                return null;
+            }
 
             for (const dateKey of sortedDates) {
                 const items = byDate[dateKey];
@@ -3258,33 +3301,42 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                 const borderColor = isOverdue ? '#FF3366' : isToday ? '#f59e0b' : '#00CFFF';
                 const bgColor = isOverdue ? '#fff0f3' : isToday ? '#fffbeb' : '#f0fbff';
 
-                // Group items by topic for this date
+                const upcomingExam = getUpcomingExamForDate(dateKey);
+                let examLabel = '';
+                if (upcomingExam) {
+                    const examDate = new Date(upcomingExam.date + 'T00:00:00');
+                    const daysToExam = Math.ceil((examDate - d) / 86400000);
+                    if (daysToExam >= 0) {
+                        examLabel = ` — Due before <strong>${upcomingExam.name}</strong> (${daysToExam}d)`;
+                    }
+                }
+
+                // Group items by topic
                 const byTopic = {};
                 items.forEach(it => {
-                    const key = `${it.subject}||${it.topic}`;
-                    if (!byTopic[key]) byTopic[key] = { subject: it.subject, topic: it.topic, count: 0, questions: [] };
-                    byTopic[key].count++;
-                    byTopic[key].questions.push(it.question);
+                    if (!byTopic[it.topic]) byTopic[it.topic] = { count: 0, questions: [] };
+                    byTopic[it.topic].count++;
+                    byTopic[it.topic].questions.push(it.question);
                 });
 
                 html += `<div style="border:3px solid ${borderColor};background:${bgColor};border-radius:8px;margin-bottom:12px;overflow:hidden;box-shadow:4px 4px 0 #000;">
                     <div style="background:${borderColor};padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-family:Impact,Arial Black,sans-serif;font-size:15px;color:${isOverdue||isToday?'#000':'#000'};letter-spacing:1px;">${dayLabel(dateKey)}</span>
+                        <span style="font-family:Impact,Arial Black,sans-serif;font-size:15px;color:#000;letter-spacing:1px;">${dayLabel(dateKey)}</span>
                         <span style="font-size:12px;font-weight:bold;color:#000;background:rgba(255,255,255,0.7);padding:2px 8px;border-radius:12px;">${items.length} card${items.length!==1?'s':''}</span>
                     </div>
-                    <div style="padding:10px 14px;">`;
+                    <div style="padding:10px 14px;">${examLabel}`;
 
-                for (const topicData of Object.values(byTopic)) {
-                    html += `<div style="margin-bottom:6px;">
+                for (const [topic, data] of Object.entries(byTopic)) {
+                    html += `<div style="margin-bottom:6px;margin-top:6px;">
                         <div style="font-weight:bold;font-size:13px;color:#000;margin-bottom:3px;">
-                            ${topicData.subject.charAt(0).toUpperCase()+topicData.subject.slice(1)} — ${topicData.topic}
-                            <span style="font-weight:normal;color:#555;font-size:12px;">(${topicData.count} card${topicData.count!==1?'s':''})</span>
+                            ${topic}
+                            <span style="font-weight:normal;color:#555;font-size:12px;">(${data.count} card${data.count!==1?'s':''})</span>
                         </div>`;
-                    topicData.questions.slice(0, 3).forEach(q => {
+                    data.questions.slice(0, 3).forEach(q => {
                         html += `<div style="font-size:12px;color:#333;padding:2px 0 2px 10px;border-left:2px solid ${borderColor};">${q.length>70?q.substring(0,70)+'…':q}</div>`;
                     });
-                    if (topicData.questions.length > 3) {
-                        html += `<div style="font-size:11px;color:#777;padding-left:10px;">+ ${topicData.questions.length-3} more…</div>`;
+                    if (data.questions.length > 3) {
+                        html += `<div style="font-size:11px;color:#777;padding-left:10px;">+ ${data.questions.length-3} more…</div>`;
                     }
                     html += `</div>`;
                 }
@@ -3293,6 +3345,26 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
             }
 
             container.innerHTML = html;
+        }
+
+        function showAddExamModal() {
+            const dateInput = prompt('Enter test date (YYYY-MM-DD):');
+            if (!dateInput) return;
+            const nameInput = prompt('Enter test name (e.g., "Geography Final"):');
+            if (!nameInput) return;
+
+            const exam = { date: dateInput, name: nameInput };
+            if (!data[currentSubject].exams) data[currentSubject].exams = [];
+            data[currentSubject].exams.push(exam);
+            saveData();
+            loadSpacedRep();
+        }
+
+        function removeExam(dateStr) {
+            if (!data[currentSubject].exams) return;
+            data[currentSubject].exams = data[currentSubject].exams.filter(e => e.date !== dateStr);
+            saveData();
+            loadSpacedRep();
         }
 
         function startReviewSession() {
