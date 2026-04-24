@@ -1101,6 +1101,7 @@
         let currentFlashcardIndex = 0;
         let currentQuizIndex = 0;
         let quizScore = 0;
+        let quizDifficulty = 'medium';  // medium, easy, hard
         let flashcardOrder = [];       // indices into flashcards array (shuffled or sequential)
         let flashcardSessionReviewed = new Set();  // track which cards rated this session
         let isShuffled = false;
@@ -2058,6 +2059,15 @@ ${jsonSchema}`;
             const quiz = quizzes[currentQuizIndex];
             const container = document.getElementById('quizTakingContainer');
 
+            // Calculate current performance
+            const answered = quizzes.filter((_, i) => i < currentQuizIndex && quizzes[i].userAnswer !== null).length;
+            const correct = quizzes.filter((_, i) => i < currentQuizIndex && quizzes[i].userAnswer === quizzes[i].correct).length;
+            const percentage = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+
+            // Difficulty indicator color
+            const diffColor = quizDifficulty === 'easy' ? '#90EE90' : quizDifficulty === 'hard' ? '#FF3366' : '#00CFFF';
+            const diffLabel = quizDifficulty === 'easy' ? '🟢 Easy' : quizDifficulty === 'hard' ? '🔴 Hard' : '🟡 Medium';
+
             let optionsHTML = '';
             ['A', 'B', 'C', 'D'].forEach(letter => {
                 const isSelected = quiz.userAnswer === letter;
@@ -2076,7 +2086,7 @@ ${jsonSchema}`;
             container.innerHTML = `
                 <div class="card-nav">
                     <button class="btn btn-secondary" onclick="previousQuiz()" ${currentQuizIndex === 0 ? 'disabled' : ''}>← Previous</button>
-                    <span>${currentQuizIndex + 1} / ${quizzes.length}</span>
+                    <span>${currentQuizIndex + 1} / ${quizzes.length} | ${percentage}% | ${diffLabel}</span>
                     <button class="btn btn-secondary" onclick="nextQuiz()" ${currentQuizIndex === quizzes.length - 1 ? 'disabled' : ''}>Next →</button>
                 </div>
 
@@ -2093,6 +2103,33 @@ ${jsonSchema}`;
             const quizzes = data[currentSubject].topics[currentTopic].quizzes;
             if (quizzes[currentQuizIndex].userAnswer === null) {
                 quizzes[currentQuizIndex].userAnswer = letter;
+
+                // Check answer and update stats
+                const isCorrect = letter === quizzes[currentQuizIndex].correct;
+                if (isCorrect) quizScore++;
+
+                // Calculate current percentage and adjust difficulty
+                const correct = quizzes.filter((q, i) => i <= currentQuizIndex && q.userAnswer === q.correct).length;
+                const answered = currentQuizIndex + 1;
+                const percentage = Math.round((correct / answered) * 100);
+
+                const oldDifficulty = quizDifficulty;
+                if (percentage >= 80) {
+                    quizDifficulty = 'hard';
+                } else if (percentage < 60) {
+                    quizDifficulty = 'easy';
+                } else {
+                    quizDifficulty = 'medium';
+                }
+
+                // Show difficulty change notification
+                if (oldDifficulty !== quizDifficulty) {
+                    const msg = quizDifficulty === 'hard' ? '🚀 Great job! Questions getting harder!'
+                              : quizDifficulty === 'easy' ? '💪 Let\'s make these easier to build confidence!'
+                              : '⚖️ Back to medium difficulty';
+                    setTimeout(() => showCoachToast(msg), 100);
+                }
+
                 saveData();
                 renderQuiz();
             }
