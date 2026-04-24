@@ -2579,8 +2579,11 @@ Speak like a friendly human coach — warm, energetic, and direct.`;
             coachIsOpen = !coachIsOpen;
             const panel = document.getElementById('coachPanel');
             const btn = document.getElementById('coachBtn');
+            const pomodoro = document.getElementById('pomodoroWidget');
             panel.style.display = coachIsOpen ? 'flex' : 'none';
             btn.style.display = coachIsOpen ? 'none' : 'flex';
+            // Lower pomodoro z-index so it can't block the coach input/send button
+            if (pomodoro) pomodoro.style.zIndex = coachIsOpen ? '1' : '9999';
             if (coachIsOpen && coachHistory.length === 0) {
                 appendCoachMessage('assistant', "Hey! 👋 I'm your AI study coach. Ask me anything, get your daily study plan, find your weak spots, or just need a boost — I'm here!");
             }
@@ -3490,7 +3493,7 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
     <!-- AI Coach Widget -->
     <div id="coachBtn" onclick="toggleCoach()" style="position:fixed; bottom:20px; left:20px; z-index:9999; width:60px; height:60px; background:#FF3366; border:3px solid #000; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:6px 6px 0 #000; font-size:26px; transition:all 0.2s;">🧠</div>
 
-    <div id="coachPanel" style="position:fixed; bottom:0; left:0; width:320px; height:500px; background:#90EE90; border:3px solid #000; border-top-right-radius:4px; z-index:9998; display:none; flex-direction:column; box-shadow:8px 0 0 #000;">
+    <div id="coachPanel" style="position:fixed; bottom:0; left:0; width:320px; max-width:calc(100vw - 20px); height:500px; max-height:calc(100vh - 20px); background:#90EE90; border:3px solid #000; border-top-right-radius:4px; z-index:10001; display:none; flex-direction:column; box-shadow:8px 0 0 #000;">
         <div style="background:#FF3366; border-bottom:3px solid #000; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-top-right-radius:2px;">
             <span style="color:#fff; font-weight:bold; font-size:1em; font-family:'Arial Black',sans-serif;">🧠 AI Coach</span>
             <button onclick="toggleCoach()" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
