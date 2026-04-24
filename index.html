@@ -2572,91 +2572,61 @@ TIPS TO IMPROVE:
         }
 
         // ── Study Music Player ──────────────────────────────────────────────────
-        let musicPlayer = null;
         let musicIsPlaying = false;
-        let musicAPIReady = false;
         let currentTrackType = 'lofi';
 
-        const MUSIC_TRACKS = {
-            lofi: 'jfKfPfyJRdk',        // Lofi Girl - lofi hip hop radio 📚
-            classical: 'jgpJVI3tDbY',   // Classical Music for Studying
-            nature: 'eKFTSSKCzWA'        // Nature Sounds
+        const MUSIC_SOURCES = {
+            lofi: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+            classical: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+            nature: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
         };
 
-        // Load YouTube IFrame API
-        (function loadYouTubeAPI() {
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            document.head.appendChild(tag);
-        })();
-
-        function onYouTubeIframeAPIReady() {
-            musicAPIReady = true;
-            createMusicPlayer(MUSIC_TRACKS[currentTrackType]);
-        }
-
-        function createMusicPlayer(videoId) {
-            const container = document.getElementById('musicPlayerContainer');
-            container.innerHTML = '<div id="musicYouTube"></div>';
-            musicPlayer = new YT.Player('musicYouTube', {
-                height: '200',
-                width: '200',
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 0,
-                    controls: 0,
-                    disablekb: 1,
-                    loop: 1,
-                    playlist: videoId
-                },
-                events: {
-                    onReady: function(event) {
-                        event.target.setVolume(50);
-                    },
-                    onStateChange: function(event) {
-                        const btn = document.getElementById('musicToggleBtn');
-                        if (event.data === YT.PlayerState.PLAYING) {
-                            btn.textContent = '⏸';
-                            musicIsPlaying = true;
-                        } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-                            btn.textContent = '▶';
-                            musicIsPlaying = false;
-                        }
-                    }
-                }
-            });
-        }
-
         function toggleMusic() {
-            if (!musicAPIReady || !musicPlayer || typeof musicPlayer.playVideo !== 'function') {
-                alert('Music is still loading — try again in a moment!');
+            const player = document.getElementById('musicPlayer');
+            const btn = document.getElementById('musicToggleBtn');
+            if (!player.src) {
+                changeMusicTrack('lofi');
                 return;
             }
             if (musicIsPlaying) {
-                musicPlayer.pauseVideo();
+                player.pause();
+                btn.textContent = '▶';
+                musicIsPlaying = false;
             } else {
-                musicPlayer.playVideo();
+                player.play().catch(err => alert('Music failed to load. Check your connection.'));
+                btn.textContent = '⏸';
+                musicIsPlaying = true;
             }
         }
 
         function setMusicVolume(value) {
-            if (musicPlayer && typeof musicPlayer.setVolume === 'function') {
-                musicPlayer.setVolume(parseInt(value));
-            }
+            const player = document.getElementById('musicPlayer');
+            player.volume = value / 100;
         }
 
         function changeMusicTrack(type) {
-            if (!musicAPIReady || !musicPlayer || typeof musicPlayer.loadVideoById !== 'function') return;
+            const player = document.getElementById('musicPlayer');
+            const wasPlaying = musicIsPlaying;
+            const url = MUSIC_SOURCES[type];
+
+            if (!url) return;
+
+            player.src = url;
+            player.addEventListener('canplay', () => {
+                if (wasPlaying) player.play();
+            }, { once: true });
+
             currentTrackType = type;
-            const videoId = MUSIC_TRACKS[type];
-            musicPlayer.loadVideoById(videoId);
-            musicPlayer.playVideo();
 
             // Update button highlights
             ['lofi', 'classical', 'nature'].forEach(t => {
                 const btn = document.getElementById('track' + t.charAt(0).toUpperCase() + t.slice(1));
                 if (btn) btn.style.background = (t === type) ? '#FFE94E' : '#fff';
             });
+
+            if (wasPlaying) {
+                player.load();
+            }
         }
 
         // AI Coach Functions
@@ -3667,8 +3637,8 @@ Be fair but thorough. Give credit for correct ideas even if wording differs from
                 <button onclick="changeMusicTrack('nature')" id="trackNature" style="flex:1; background:#fff; border:2px solid #000; color:#000; font-weight:bold; padding:3px 2px; cursor:pointer; border-radius:2px; font-size:10px;">Nature</button>
             </div>
         </div>
-        <div id="musicPlayerContainer" style="position:absolute; left:-9999px; top:-9999px;"></div>
     </div>
+    <audio id="musicPlayer" style="display:none;" crossorigin="anonymous"></audio>
 
     <!-- Pomodoro Timer Widget -->
     <div id="pomodoroWidget" style="position:fixed; bottom:20px; right:20px; z-index:9999; font-family:'Arial Black',Impact,sans-serif;">
