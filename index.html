@@ -1102,6 +1102,7 @@
         let currentQuizIndex = 0;
         let quizScore = 0;
         let quizDifficulty = 'medium';  // medium, easy, hard
+        let quizCorrectStreak = 0;
         let flashcardOrder = [];       // indices into flashcards array (shuffled or sequential)
         let flashcardSessionReviewed = new Set();  // track which cards rated this session
         let isShuffled = false;
@@ -2050,6 +2051,7 @@ ${jsonSchema}`;
 
             currentQuizIndex = 0;
             quizScore = 0;
+            quizCorrectStreak = 0;
             quizzes.forEach(q => q.userAnswer = null);
             renderQuiz();
         }
@@ -2086,7 +2088,7 @@ ${jsonSchema}`;
             container.innerHTML = `
                 <div class="card-nav">
                     <button class="btn btn-secondary" onclick="previousQuiz()" ${currentQuizIndex === 0 ? 'disabled' : ''}>← Previous</button>
-                    <span>${currentQuizIndex + 1} / ${quizzes.length} | ${percentage}% | ${diffLabel}</span>
+                    <span>${currentQuizIndex + 1} / ${quizzes.length} | ${percentage}% | ${diffLabel}${quizCorrectStreak >= 2 ? ` | 🔥${quizCorrectStreak}` : ''}</span>
                     <button class="btn btn-secondary" onclick="nextQuiz()" ${currentQuizIndex === quizzes.length - 1 ? 'disabled' : ''}>Next →</button>
                 </div>
 
@@ -2106,7 +2108,19 @@ ${jsonSchema}`;
 
                 // Check answer and update stats
                 const isCorrect = letter === quizzes[currentQuizIndex].correct;
-                if (isCorrect) quizScore++;
+                if (isCorrect) {
+                    quizScore++;
+                    quizCorrectStreak++;
+                } else {
+                    quizCorrectStreak = 0;
+                }
+
+                // 5-in-a-row streak bonus
+                if (quizCorrectStreak > 0 && quizCorrectStreak % 5 === 0) {
+                    const bonusXP = 15;
+                    addPoints(bonusXP, `🔥 ${quizCorrectStreak}-answer streak bonus!`);
+                    setTimeout(() => showCoachToast(`🔥 ${quizCorrectStreak} correct in a row! +${bonusXP} bonus XP!`), 100);
+                }
 
                 // Calculate current percentage and adjust difficulty
                 const correct = quizzes.filter((q, i) => i <= currentQuizIndex && q.userAnswer === q.correct).length;
@@ -2127,7 +2141,7 @@ ${jsonSchema}`;
                     const msg = quizDifficulty === 'hard' ? '🚀 Great job! Questions getting harder!'
                               : quizDifficulty === 'easy' ? '💪 Let\'s make these easier to build confidence!'
                               : '⚖️ Back to medium difficulty';
-                    setTimeout(() => showCoachToast(msg), 100);
+                    setTimeout(() => showCoachToast(msg), 400);
                 }
 
                 saveData();
