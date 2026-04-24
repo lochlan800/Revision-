@@ -1147,6 +1147,32 @@
         let feynmanLastResultIndex = 0;
         let feynmanRestartInterval = null;
 
+        function appendWithoutDuplication(existing, newText) {
+            const existingClean = existing.trim();
+            const newClean = newText.trim();
+            if (!newClean) return existing;
+            if (!existingClean) return newClean + ' ';
+
+            const existingLower = existingClean.toLowerCase();
+            const newLower = newClean.toLowerCase();
+
+            if (existingLower.endsWith(newLower)) {
+                return existing;
+            }
+
+            const maxOverlap = Math.min(existingLower.length, newLower.length, 200);
+            for (let len = maxOverlap; len >= 4; len--) {
+                const suffix = existingLower.slice(-len);
+                const prefix = newLower.slice(0, len);
+                if (suffix === prefix) {
+                    const nonOverlapping = newClean.slice(len).trim();
+                    return nonOverlapping ? existing + ' ' + nonOverlapping + ' ' : existing;
+                }
+            }
+
+            return existing + newClean + ' ';
+        }
+
         // Initialize Web Speech API
         if (window.SpeechRecognition || window.webkitSpeechRecognition) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1177,14 +1203,14 @@
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
                         if (i >= feynmanLastResultIndex) {
-                            feynmanTranscript += transcript + ' ';
+                            feynmanTranscript = appendWithoutDuplication(feynmanTranscript, transcript);
                             feynmanLastResultIndex = i + 1;
                         }
                     } else {
                         interimTranscript += transcript;
                     }
                 }
-                document.getElementById('feynmanTranscript').value = feynmanTranscript + interimTranscript;
+                document.getElementById('feynmanTranscript').value = feynmanTranscript + (interimTranscript ? ' ' + interimTranscript : '');
             };
 
             feynmanRecognition.onerror = function(event) {
